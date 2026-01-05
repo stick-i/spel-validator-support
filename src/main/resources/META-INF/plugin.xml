@@ -1,0 +1,57 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
+    <id>cn.sticki.spel-validator-support</id>
+
+    <!-- Public plugin name should be written in Title Case.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-name -->
+    <name>SpEL Validator Support</name>
+
+    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+    <vendor email="support@sticki.cn" url="https://github.com/stick-i/spel-validator">Sticki</vendor>
+
+    <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
+    <description><![CDATA[
+        <p>为 SpEL Validator 框架提供智能开发支持的 IntelliJ IDEA 插件。</p>
+        <p>Intelligent development support for SpEL Validator framework in IntelliJ IDEA.</p>
+        
+        <h3>主要功能 / Features:</h3>
+        <ul>
+            <li>SpEL 语言注入和语法高亮 / SpEL language injection and syntax highlighting</li>
+            <li>#this 上下文字段自动补全 / Auto-completion for #this context fields</li>
+            <li>字段引用跳转 (Ctrl+Click) / Field reference navigation (Ctrl+Click)</li>
+            <li>字段重命名重构支持 / Field rename refactoring support</li>
+            <li>字段存在性错误检查 / Field existence error checking</li>
+        </ul>
+        
+        <h3>关于 SpEL Validator / About SpEL Validator:</h3>
+        <p>SpEL Validator 是一个基于 Spring Expression Language 的 Java 参数校验框架。</p>
+        <p>SpEL Validator is a Java parameter validation framework based on Spring Expression Language.</p>
+        
+        <p>项目地址 / Project: <a href="https://github.com/stick-i/spel-validator">https://github.com/stick-i/spel-validator</a></p>
+    ]]></description>
+
+    <!-- Product and plugin compatibility requirements.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+    <depends>org.intellij.intelliLang</depends>
+    <depends optional="true" config-file="spring-support.xml">com.intellij.spring</depends>
+
+    <!-- Extension points defined by the plugin.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Language injection for SpEL expressions in SpEL Validator annotations -->
+        <!-- Will be implemented in task 4 -->
+        
+        <!-- Code completion for #this fields in SpEL expressions -->
+        <!-- Will be implemented in task 6 -->
+        
+        <!-- Reference resolution for field references in SpEL expressions -->
+        <!-- Will be implemented in task 8 -->
+        
+        <!-- Error checking for field existence in SpEL expressions -->
+        <!-- Will be implemented in task 10 -->
+    </extensions>
+</idea-plugin>

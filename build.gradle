@@ -1,0 +1,72 @@
+plugins {
+    id 'java'
+    id 'org.jetbrains.intellij.platform' version '2.5.0'
+}
+
+group = 'cn.sticki'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+    intellijPlatform {
+        defaultRepositories()
+    }
+}
+
+// Configure IntelliJ Platform Gradle Plugin
+// Read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html
+dependencies {
+    intellijPlatform {
+        // Target IntelliJ IDEA 2023.2+ as per requirements
+        create('IC', '2023.2')
+        
+        // Required plugins for SpEL support
+        bundledPlugin('com.intellij.java')
+        bundledPlugin('org.intellij.intelliLang')
+        bundledPlugin('com.intellij.spring')
+        
+        // Test framework
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
+    }
+    
+    // Testing dependencies
+    testImplementation('org.junit.jupiter:junit-jupiter:5.9.3')
+    testRuntimeOnly('org.junit.platform:junit-platform-launcher')
+    
+    // Property-based testing library
+    testImplementation('org.quicktheories:quicktheories:0.26')
+}
+
+intellijPlatform {
+    pluginConfiguration {
+        name = 'SpEL Validator Support'
+        version = project.version
+        
+        ideaVersion {
+            sinceBuild = '232'  // 2023.2
+            untilBuild = ''     // No upper limit
+        }
+
+        changeNotes = '''
+            <h3>1.0.0</h3>
+            <ul>
+                <li>Initial release</li>
+                <li>SpEL language injection for SpEL Validator annotations</li>
+                <li>Field completion for #this context</li>
+                <li>Field reference resolution and navigation</li>
+                <li>Field rename refactoring support</li>
+                <li>Field existence error checking</li>
+            </ul>
+        '''.stripIndent()
+    }
+}
+
+tasks.withType(JavaCompile) {
+    sourceCompatibility = '21'
+    targetCompatibility = '21'
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

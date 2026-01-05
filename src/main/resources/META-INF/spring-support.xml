@@ -1,0 +1,5 @@
+<!-- Optional Spring plugin support configuration -->
+<idea-plugin>
+    <!-- This file is loaded only when Spring plugin is available -->
+    <!-- Spring plugin provides SpEL language support that we leverage -->
+</idea-plugin>
