@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+
 plugins {
     id 'java'
     id 'org.jetbrains.intellij.platform' version '2.5.0'
@@ -18,21 +20,24 @@ repositories {
 dependencies {
     intellijPlatform {
         // Target IntelliJ IDEA 2023.2+ as per requirements
-        create('IC', '2023.2')
+        create('IU', '2023.2')
         
         // Required plugins for SpEL support
         bundledPlugin('com.intellij.java')
         bundledPlugin('org.intellij.intelliLang')
         bundledPlugin('com.intellij.spring')
-        
-        // Test framework
-        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform.INSTANCE)
+
+        // IntelliJ Platform testing infrastructure
+        testFramework(TestFrameworkType.Platform.INSTANCE)
     }
     
     // Testing dependencies
     testImplementation('org.junit.jupiter:junit-jupiter:5.9.3')
     testRuntimeOnly('org.junit.platform:junit-platform-launcher')
-    
+
+    // JUnit 3 for IntelliJ Platform tests
+    testImplementation('junit:junit:3.8.1')
+
     // Property-based testing library
     testImplementation('org.quicktheories:quicktheories:0.26')
 }
@@ -62,8 +67,8 @@ intellijPlatform {
 }
 
 tasks.withType(JavaCompile) {
-    sourceCompatibility = '21'
-    targetCompatibility = '21'
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
     options.encoding = 'UTF-8'
 }
 
