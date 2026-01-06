@@ -54,6 +54,7 @@
                                   implementation="cn.sticki.spel.validator.support.reference.SpelFieldReferenceContributor"/>
         
         <!-- Error checking for field existence in SpEL expressions -->
-        <!-- Will be implemented in task 10 -->
+        <annotator language="JAVA"
+                   implementationClass="cn.sticki.spel.validator.support.inspection.SpelFieldAnnotator"/>
     </extensions>
 </idea-plugin>
