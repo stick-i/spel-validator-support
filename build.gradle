@@ -19,34 +19,36 @@ repositories {
 // Read more: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html
 dependencies {
     intellijPlatform {
-        // Target IntelliJ IDEA 2023.2+ as per requirements
         create('IU', '2023.2')
-        
-        // Required plugins for SpEL support
+
         bundledPlugin('com.intellij.java')
         bundledPlugin('org.intellij.intelliLang')
         bundledPlugin('com.intellij.spring')
 
-        // IntelliJ Platform testing infrastructure
+        // 这两个组合会自动提供 IDEA 测试基类所需的全部依赖（含 JUnit 4）
         testFramework(TestFrameworkType.Platform.INSTANCE)
+        testFramework(TestFrameworkType.Bundled.INSTANCE)
     }
-    
-    // Testing dependencies
-    testImplementation('org.junit.jupiter:junit-jupiter:5.9.3')
-    testRuntimeOnly('org.junit.platform:junit-platform-launcher')
 
-    // JUnit 3 for IntelliJ Platform tests
-    testImplementation('junit:junit:3.8.1')
+    // 现代 JUnit 5 栈
+    testImplementation platform('org.junit:junit-bom:5.11.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // Property-based testing library
-    testImplementation('org.quicktheories:quicktheories:0.26')
+    // 兼容旧版 JUnit 3/4 测试运行
+    testRuntimeOnly 'org.junit.vintage:junit-vintage-engine'
+    testImplementation 'junit:junit:4.13.2'
+
+    // 功能性测试库
+    testImplementation 'org.quicktheories:quicktheories:0.26'
+    testImplementation 'org.assertj:assertj-core:3.26.3'
 }
 
 intellijPlatform {
     pluginConfiguration {
         name = 'SpEL Validator Support'
         version = project.version
-        
+
         ideaVersion {
             sinceBuild = '232'  // 2023.2
             untilBuild = ''     // No upper limit
