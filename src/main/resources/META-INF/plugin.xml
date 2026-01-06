@@ -43,7 +43,7 @@
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
         <!-- Language injection for SpEL expressions in SpEL Validator annotations -->
-        <!-- Will be implemented in task 4 -->
+        <languageInjector implementation="cn.sticki.spel.validator.support.injection.SpelLanguageInjector"/>
         
         <!-- Code completion for #this fields in SpEL expressions -->
         <!-- Will be implemented in task 6 -->
