@@ -14,17 +14,48 @@ import java.util.List;
 
 /**
  * SpEL 字段补全贡献者
- * 为 SpEL 表达式中的 #this. 提供字段补全
- * 
+ * <p>
+ * 本类实现 IntelliJ Platform 的 {@link CompletionContributor}，
+ * 为 SpEL 表达式中的 #this. 提供字段补全功能。
+ * <p>
+ * 功能说明：
+ * <ul>
+ *   <li>在输入 #this. 后显示当前类的所有字段</li>
+ *   <li>支持父类字段补全（包括私有字段）</li>
+ *   <li>支持嵌套字段补全（如 #this.user.address.）</li>
+ *   <li>显示字段类型信息和图标</li>
+ * </ul>
+ * <p>
+ * 补全触发条件：
+ * <ol>
+ *   <li>光标位于字符串字面量中</li>
+ *   <li>字符串位于 SpEL Validator 约束注解的属性中</li>
+ *   <li>光标前的文本包含 #this.</li>
+ * </ol>
+ * <p>
  * 性能优化：
- * - 使用 ReadAction.compute 确保线程安全
- * 
+ * <ul>
+ *   <li>使用 {@link ReadAction#run} 确保线程安全</li>
+ *   <li>字段列表通过 {@link SpelValidatorUtil#getAllFields} 缓存</li>
+ * </ul>
+ * <p>
+ * Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6
+ *
  * @author Sticki
+ * @see CompletionContributor
+ * @see SpelValidatorUtil#getAllFields(PsiClass)
+ * @see SpelValidatorUtil#resolveNestedField(PsiClass, String)
  */
 public class SpelFieldCompletionContributor extends CompletionContributor {
     
     private static final Logger LOG = Logger.getInstance(SpelFieldCompletionContributor.class);
     
+    /**
+     * 构造函数
+     * <p>
+     * 注册补全模式：匹配位于字符串字面量内部的位置。
+     * 当用户在字符串中输入时，会触发补全逻辑。
+     */
     public SpelFieldCompletionContributor() {
         // 注册补全模式：匹配字符串字面量中的位置
         extend(CompletionType.BASIC,

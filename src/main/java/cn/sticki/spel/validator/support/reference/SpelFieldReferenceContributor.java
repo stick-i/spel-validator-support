@@ -16,17 +16,38 @@ import java.util.regex.Pattern;
 
 /**
  * SpEL 字段引用贡献者
- * 为 SpEL 表达式中的字段引用提供解析支持
- * 
- * 支持以下功能：
- * - Ctrl+Click 跳转到字段定义
- * - Find Usages 查找字段使用
- * - 字段重命名重构
- * 
+ * <p>
+ * 本类实现 IntelliJ Platform 的 {@link PsiReferenceContributor}，
+ * 为 SpEL 表达式中的字段引用提供解析支持。
+ * <p>
+ * 功能说明：
+ * <ul>
+ *   <li>识别 SpEL 表达式中的 #this.fieldName 模式</li>
+ *   <li>为每个字段引用创建 {@link SpelFieldReference} 实例</li>
+ *   <li>支持嵌套字段路径（如 #this.user.address.city）</li>
+ *   <li>为路径中的每一级字段创建独立的引用</li>
+ * </ul>
+ * <p>
+ * 引用创建示例：
+ * <pre>
+ * 表达式: #this.user.address.city
+ * 创建的引用:
+ *   - SpelFieldReference("user", contextClass)
+ *   - SpelFieldReference("user.address", contextClass)
+ *   - SpelFieldReference("user.address.city", contextClass)
+ * </pre>
+ * <p>
  * 性能优化：
- * - 使用 ReadAction.compute 确保线程安全
- * 
+ * <ul>
+ *   <li>使用 {@link ReadAction#compute} 确保线程安全</li>
+ *   <li>使用正则表达式高效匹配字段引用模式</li>
+ * </ul>
+ * <p>
+ * Requirements: 4.1, 4.2, 4.3, 4.4, 5.1
+ *
  * @author Sticki
+ * @see PsiReferenceContributor
+ * @see SpelFieldReference
  */
 public class SpelFieldReferenceContributor extends PsiReferenceContributor {
     
@@ -34,10 +55,26 @@ public class SpelFieldReferenceContributor extends PsiReferenceContributor {
     
     /**
      * 匹配 #this.fieldName 或 #this.field1.field2 的正则表达式
-     * 捕获组1: 完整的字段路径（如 "field1.field2"）
+     * <p>
+     * 模式说明：
+     * <ul>
+     *   <li>#this\. - 匹配 "#this." 前缀</li>
+     *   <li>[a-zA-Z_][a-zA-Z0-9_]* - 匹配字段名（以字母或下划线开头）</li>
+     *   <li>(?:\.[a-zA-Z_][a-zA-Z0-9_]*)* - 匹配可选的嵌套字段</li>
+     * </ul>
+     * <p>
+     * 捕获组1: 完整的字段路径（如 "field1.field2.field3"）
      */
     private static final Pattern THIS_FIELD_PATTERN = Pattern.compile("#this\\.([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*)*)");
     
+    /**
+     * 注册引用提供者
+     * <p>
+     * 此方法在插件加载时被调用，用于注册引用提供者。
+     * 注册后，当 IDEA 处理字符串字面量时，会调用我们的引用提供者。
+     *
+     * @param registrar 引用注册器
+     */
     @Override
     public void registerReferenceProviders(@NotNull PsiReferenceRegistrar registrar) {
         // 注册引用提供者：匹配字符串字面量

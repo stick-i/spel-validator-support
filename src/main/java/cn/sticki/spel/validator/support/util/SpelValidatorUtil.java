@@ -11,50 +11,107 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * SpEL Validator 插件核心工具类
- * 提供注解识别、上下文解析、字段查找等通用功能
+ * <p>
+ * 本类提供 SpEL Validator IDEA 插件所需的核心工具方法，包括：
+ * <ul>
+ *   <li>约束注解识别：判断注解是否为 SpEL Validator 的约束注解</li>
+ *   <li>@Language 注解检查：判断注解属性是否标注了 @Language("SpEL")</li>
+ *   <li>上下文类获取：从注解位置获取 #this 指向的类</li>
+ *   <li>字段收集：获取类及其父类的所有字段</li>
+ *   <li>嵌套字段解析：解析如 "user.address.city" 的字段路径</li>
+ * </ul>
+ * <p>
+ * 性能优化策略：
+ * <ul>
+ *   <li>使用 {@link CachedValuesManager} 缓存字段列表，当 PSI 树变化时自动失效</li>
+ *   <li>使用 {@link ConcurrentHashMap} 缓存字段类型解析结果，支持并发访问</li>
+ *   <li>缓存大小限制为 {@value #MAX_CACHE_SIZE}，防止内存泄漏</li>
+ * </ul>
+ * <p>
+ * 线程安全：本类的所有公共方法都是线程安全的
+ * <p>
+ * Requirements: 1.1, 1.2, 1.3, 2.1, 3.1, 3.2, 3.3, 3.5, 4.4
  *
- * 性能优化：
- * - 使用 CachedValue 缓存字段列表
- * - 使用 ConcurrentHashMap 缓存字段类型解析结果
- * 
  * @author Sticki
+ * @see cn.sticki.spel.validator.support.injection.SpelLanguageInjector
+ * @see cn.sticki.spel.validator.support.completion.SpelFieldCompletionContributor
+ * @see cn.sticki.spel.validator.support.reference.SpelFieldReferenceContributor
  */
 public class SpelValidatorUtil {
 
     private static final Logger LOG = Logger.getInstance(SpelValidatorUtil.class);
     
     /**
-     * SpEL Validator 约束注解的包名
+     * SpEL Validator 约束注解的包名前缀
+     * <p>
+     * 所有位于此包下的注解都被视为内置约束注解，包括：
+     * SpelAssert, SpelNotNull, SpelNotBlank, SpelNotEmpty, SpelNull,
+     * SpelSize, SpelMin, SpelMax, SpelDigits, SpelFuture, SpelPast,
+     * SpelFutureOrPresent, SpelPastOrPresent 等
      */
     private static final String CONSTRAINT_PACKAGE = "cn.sticki.spel.validator.constrain";
     
     /**
-     * SpEL Constraint 元注解的完全限定名
+     * SpelConstraint 元注解的完全限定名
+     * <p>
+     * 用户自定义的约束注解需要标注此元注解才能被插件识别
+     * 这是 SpEL Validator 框架的扩展机制
      */
     private static final String SPEL_CONSTRAINT_ANNOTATION = "cn.sticki.spel.validator.constrain.SpelConstraint";
     
     /**
-     * Language 注解的完全限定名
+     * IntelliJ @Language 注解的完全限定名
+     * <p>
+     * 用于标记注解属性应该注入特定语言支持
+     * 当 value 为 "SpEL" 时，表示该属性应该注入 SpEL 语言支持
      */
     private static final String LANGUAGE_ANNOTATION = "org.intellij.lang.annotations.Language";
 
     /**
      * 字段类型解析缓存
-     * Key: 类的完全限定名 + "." + 字段路径
-     * Value: 解析到的 PsiClass
+     * <p>
+     * 缓存结构：
+     * <ul>
+     *   <li>Key: 类的完全限定名 + "." + 字段路径（如 "com.example.User.address"）</li>
+     *   <li>Value: 解析到的 PsiClass 对象</li>
+     * </ul>
+     * <p>
+     * 使用 ConcurrentHashMap 保证线程安全
      */
     private static final ConcurrentHashMap<String, PsiClass> fieldTypeCache = new ConcurrentHashMap<>();
 
     /**
-     * 缓存最大大小，防止内存泄漏
+     * 缓存最大大小
+     * <p>
+     * 当缓存大小超过此值时，会清空整个缓存以防止内存泄漏
+     * 这是一个简单但有效的缓存淘汰策略
      */
     private static final int MAX_CACHE_SIZE = 1000;
     
     /**
      * 判断注解是否为 SpEL Validator 约束注解
+     * <p>
+     * 识别逻辑（满足任一条件即可）：
+     * <ol>
+     *   <li>注解的包名以 {@value #CONSTRAINT_PACKAGE} 开头（内置约束注解）</li>
+     *   <li>注解类上标注了 @SpelConstraint 元注解（自定义约束注解）</li>
+     * </ol>
+     * <p>
+     * 使用示例：
+     * <pre>{@code
+     * // 内置注解
+     * @SpelNotNull(condition = "#this.name != null")
+     * private String field;
      * 
-     * @param annotation 待检查的注解
-     * @return 如果是约束注解返回 true，否则返回 false
+     * // 自定义注解（需要标注 @SpelConstraint）
+     * @SpelConstraint
+     * public @interface MyConstraint { ... }
+     * }</pre>
+     *
+     * @param annotation 待检查的注解，可以为 null
+     * @return 如果是约束注解返回 true，否则返回 false（包括 null 的情况）
+     * @see #CONSTRAINT_PACKAGE
+     * @see #SPEL_CONSTRAINT_ANNOTATION
      */
     public static boolean isSpelConstraintAnnotation(PsiAnnotation annotation) {
         if (annotation == null) {
@@ -95,8 +152,28 @@ public class SpelValidatorUtil {
     
     /**
      * 判断注解属性是否标注了 @Language("SpEL")
-     * 
-     * @param method 注解属性对应的方法
+     * <p>
+     * 此方法用于确定注解的某个属性是否应该注入 SpEL 语言支持。
+     * 只有当属性方法上标注了 @Language("SpEL") 时，才会为该属性的字符串值注入 SpEL 语言。
+     * <p>
+     * 检查逻辑：
+     * <ol>
+     *   <li>获取方法的修饰符列表</li>
+     *   <li>查找 @Language 注解</li>
+     *   <li>检查 @Language 的 value 属性是否为 "SpEL"</li>
+     * </ol>
+     * <p>
+     * 使用示例：
+     * <pre>{@code
+     * public @interface SpelNotNull {
+     *   @Language("SpEL")  // 此属性会注入 SpEL 语言
+     *   String condition() default "";
+     *   
+     *   String message() default "";  // 此属性不会注入
+     * }
+     * }</pre>
+     *
+     * @param method 注解属性对应的方法（注解的属性在 Java 中表现为方法），可以为 null
      * @return 如果标注了 @Language("SpEL") 返回 true，否则返回 false
      */
     public static boolean isSpelLanguageAttribute(PsiMethod method) {
@@ -131,9 +208,24 @@ public class SpelValidatorUtil {
     
     /**
      * 获取注解所在的类（#this 的上下文类）
-     * 
-     * @param annotation 注解对象
-     * @return 包含该注解的类，如果找不到返回 null
+     * <p>
+     * 在 SpEL 表达式中，#this 变量代表当前被校验的对象。
+     * 此方法通过向上遍历 PSI 树，找到包含该注解的类定义。
+     * <p>
+     * PSI 树遍历路径示例：
+     * <pre>
+     * PsiAnnotation → PsiModifierList → PsiField → PsiClass (目标)
+     * </pre>
+     * <p>
+     * 使用场景：
+     * <ul>
+     *   <li>字段补全：确定 #this. 后应该补全哪个类的字段</li>
+     *   <li>引用解析：确定字段引用应该在哪个类中查找</li>
+     *   <li>错误检查：确定字段是否存在于上下文类中</li>
+     * </ul>
+     *
+     * @param annotation 注解对象，可以为 null
+     * @return 包含该注解的类，如果找不到或参数为 null 则返回 null
      */
     public static PsiClass getContextClass(PsiAnnotation annotation) {
         if (annotation == null) {
@@ -162,10 +254,27 @@ public class SpelValidatorUtil {
     
     /**
      * 获取类的所有字段（包括父类字段）
-     * 使用 CachedValue 缓存结果，提高性能
-     * 
-     * @param psiClass 类对象
-     * @return 所有字段的列表
+     * <p>
+     * 此方法递归收集当前类及其所有父类的字段，但不包括 java.lang.Object 的字段。
+     * 结果使用 {@link CachedValuesManager} 缓存，当 PSI 树发生变化时自动失效。
+     * <p>
+     * 字段收集顺序：
+     * <ol>
+     *   <li>当前类的字段</li>
+     *   <li>父类的字段</li>
+     *   <li>祖父类的字段</li>
+     *   <li>...（直到 Object 类之前）</li>
+     * </ol>
+     * <p>
+     * 性能优化：
+     * <ul>
+     *   <li>使用 CachedValue 缓存结果</li>
+     *   <li>依赖 PsiModificationTracker 自动失效</li>
+     *   <li>缓存失败时回退到直接收集</li>
+     * </ul>
+     *
+     * @param psiClass 类对象，可以为 null
+     * @return 所有字段的列表（包括私有字段），如果参数为 null 则返回空列表
      */
     public static List<PsiField> getAllFields(PsiClass psiClass) {
         if (psiClass == null) {
@@ -226,12 +335,26 @@ public class SpelValidatorUtil {
     }
     
     /**
-     * 解析嵌套字段路径（如 "user.name"）
-     * 使用缓存优化字段类型解析
-     * 
-     * @param startClass 起始类
-     * @param fieldPath 字段路径，用 . 分隔
-     * @return 解析到的字段，如果解析失败返回 null
+     * 解析嵌套字段路径
+     * <p>
+     * 此方法支持解析如 "user.address.city" 的嵌套字段路径。
+     * 按 "." 分割路径后，逐级解析每个字段的类型，最终返回路径末端的字段。
+     * <p>
+     * 解析过程示例（路径 "user.address.city"）：
+     * <ol>
+     *   <li>在 startClass 中查找 "user" 字段</li>
+     *   <li>获取 "user" 字段的类型（如 User 类）</li>
+     *   <li>在 User 类中查找 "address" 字段</li>
+     *   <li>获取 "address" 字段的类型（如 Address 类）</li>
+     *   <li>在 Address 类中查找 "city" 字段</li>
+     *   <li>返回 "city" 字段</li>
+     * </ol>
+     * <p>
+     * 性能优化：使用 {@link #fieldTypeCache} 缓存字段类型解析结果
+     *
+     * @param startClass 起始类（#this 指向的类）
+     * @param fieldPath  字段路径，用 "." 分隔（如 "user.address.city"）
+     * @return 解析到的字段，如果路径中任何一级字段不存在则返回 null
      */
     public static PsiField resolveNestedField(PsiClass startClass, String fieldPath) {
         if (startClass == null || fieldPath == null || fieldPath.isEmpty()) {

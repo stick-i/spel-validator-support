@@ -8,24 +8,65 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * SpEL 语言注入器
- * 为 SpEL Validator 注解的属性注入 SpEL 语言支持
- * 
- * 异常处理：
- * - 所有扩展点方法都使用 try-catch 捕获异常
- * - 使用 Logger 记录错误信息
- * - 确保异常不影响 IDEA 正常功能
- * 
+ * <p>
+ * 本类实现 IntelliJ Platform 的 {@link LanguageInjector} 接口，
+ * 为 SpEL Validator 约束注解的属性注入 SpEL 语言支持。
+ * <p>
+ * 功能说明：
+ * <ul>
+ *   <li>自动识别 SpEL Validator 的约束注解</li>
+ *   <li>检查注解属性是否标注了 @Language("SpEL")</li>
+ *   <li>为符合条件的字符串字面量注入 SpEL 语言</li>
+ *   <li>注入后，IDEA 会自动提供 SpEL 语法高亮和基础补全</li>
+ * </ul>
+ * <p>
+ * 注入条件（必须同时满足）：
+ * <ol>
+ *   <li>元素是字符串字面量（PsiLiteralExpression）</li>
+ *   <li>字符串位于注解的属性值中（PsiNameValuePair）</li>
+ *   <li>属性对应的方法标注了 @Language("SpEL")</li>
+ *   <li>注解是 SpEL Validator 的约束注解</li>
+ * </ol>
+ * <p>
+ * 异常处理策略：
+ * <ul>
+ *   <li>所有扩展点方法都使用 try-catch 捕获异常</li>
+ *   <li>使用 Logger 记录错误信息，便于调试</li>
+ *   <li>确保异常不会影响 IDEA 的正常功能</li>
+ * </ul>
+ * <p>
+ * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
+ *
  * @author Sticki
+ * @see LanguageInjector
+ * @see SpelValidatorUtil#isSpelConstraintAnnotation(PsiAnnotation)
+ * @see SpelValidatorUtil#isSpelLanguageAttribute(PsiMethod)
  */
 public class SpelLanguageInjector implements LanguageInjector {
     
     private static final Logger LOG = Logger.getInstance(SpelLanguageInjector.class);
     
     /**
-     * SpEL 语言 ID
+     * SpEL 语言的 ID
+     * <p>
+     * 此 ID 用于在 IntelliJ Platform 中查找 SpEL 语言定义。
+     * SpEL 语言支持由 Spring 插件提供，如果 Spring 插件未安装，
+     * 则无法找到该语言，语言注入将被跳过。
      */
     private static final String SPEL_LANGUAGE_ID = "SpEL";
     
+    /**
+     * 获取需要注入的语言
+     * <p>
+     * 此方法是 {@link LanguageInjector} 接口的实现，
+     * 由 IntelliJ Platform 在处理字符串字面量时调用。
+     * <p>
+     * 方法会检查字符串是否位于 SpEL Validator 约束注解的属性中，
+     * 如果是，则注入 SpEL 语言支持。
+     *
+     * @param host                  语言注入宿主（通常是字符串字面量）
+     * @param injectedLanguagePlaces 注入位置的容器，用于添加语言注入
+     */
     @Override
     public void getLanguagesToInject(@NotNull PsiLanguageInjectionHost host, 
                                      @NotNull InjectedLanguagePlaces injectedLanguagePlaces) {

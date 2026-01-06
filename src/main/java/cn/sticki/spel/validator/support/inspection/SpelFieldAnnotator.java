@@ -13,21 +13,38 @@ import java.util.regex.Pattern;
 
 /**
  * SpEL 字段存在性检查标注器
- * 检查 SpEL 表达式中的字段引用是否有效
- * 
- * 功能：
- * - 检查 #this.fieldName 中的字段是否存在
- * - 检查嵌套字段引用（如 #this.user.name）的每一级是否存在
- * - 为不存在的字段显示错误标记
- * 
- * 异常处理：
- * - 所有扩展点方法都使用 try-catch 捕获异常
- * - 使用 Logger 记录错误信息
- * - 确保异常不影响 IDEA 正常功能
- * 
+ * <p>
+ * 本类实现 IntelliJ Platform 的 {@link Annotator} 接口，
+ * 用于检查 SpEL 表达式中的字段引用是否有效。
+ * <p>
+ * 功能说明：
+ * <ul>
+ *   <li>检查 #this.fieldName 中的字段是否存在于上下文类中</li>
+ *   <li>检查嵌套字段引用（如 #this.user.name）的每一级是否存在</li>
+ *   <li>为不存在的字段显示红色波浪线错误标记</li>
+ *   <li>鼠标悬停时显示错误消息</li>
+ * </ul>
+ * <p>
+ * 检查逻辑：
+ * <ol>
+ *   <li>识别字符串字面量中的 #this.fieldPath 模式</li>
+ *   <li>获取上下文类（#this 指向的类）</li>
+ *   <li>逐级解析字段路径</li>
+ *   <li>如果某级字段不存在，在该字段名下显示错误</li>
+ * </ol>
+ * <p>
+ * 异常处理策略：
+ * <ul>
+ *   <li>所有扩展点方法都使用 try-catch 捕获异常</li>
+ *   <li>使用 Logger 记录错误信息，便于调试</li>
+ *   <li>确保异常不会影响 IDEA 的正常功能</li>
+ * </ul>
+ * <p>
  * Requirements: 6.1, 6.2, 6.3, 6.4
- * 
+ *
  * @author Sticki
+ * @see Annotator
+ * @see SpelValidatorUtil#resolveNestedField(PsiClass, String)
  */
 public class SpelFieldAnnotator implements Annotator {
     
@@ -35,10 +52,30 @@ public class SpelFieldAnnotator implements Annotator {
     
     /**
      * 匹配 #this.fieldName 或 #this.field1.field2 的正则表达式
-     * 捕获组1: 完整的字段路径（如 "field1.field2"）
+     * <p>
+     * 模式说明：
+     * <ul>
+     *   <li>#this\. - 匹配 "#this." 前缀</li>
+     *   <li>[a-zA-Z_][a-zA-Z0-9_]* - 匹配字段名（以字母或下划线开头）</li>
+     *   <li>(?:\.[a-zA-Z_][a-zA-Z0-9_]*)* - 匹配可选的嵌套字段</li>
+     * </ul>
+     * <p>
+     * 捕获组1: 完整的字段路径（如 "field1.field2.field3"）
      */
     private static final Pattern THIS_FIELD_PATTERN = Pattern.compile("#this\\.([a-zA-Z_][a-zA-Z0-9_]*(?:\\.[a-zA-Z_][a-zA-Z0-9_]*)*)");
     
+    /**
+     * 执行标注
+     * <p>
+     * 此方法是 {@link Annotator} 接口的实现，
+     * 由 IntelliJ Platform 在处理 PSI 元素时调用。
+     * <p>
+     * 方法会检查字符串字面量中的字段引用是否有效，
+     * 如果字段不存在，则添加错误标注。
+     *
+     * @param element PSI 元素
+     * @param holder  标注持有者，用于添加错误/警告标注
+     */
     @Override
     public void annotate(@NotNull PsiElement element, @NotNull AnnotationHolder holder) {
         try {

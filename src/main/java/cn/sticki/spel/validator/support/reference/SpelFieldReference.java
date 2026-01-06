@@ -15,31 +15,58 @@ import java.util.List;
 
 /**
  * SpEL 字段引用实现
- * 实现字段引用的具体行为（解析、重命名等）
- * 
- * 支持以下功能：
- * - Ctrl+Click 跳转到字段定义
- * - Find Usages 查找字段使用
- * - 字段重命名重构
- * - 代码补全候选项
- * 
+ * <p>
+ * 本类继承 {@link PsiReferenceBase}，实现 SpEL 表达式中字段引用的具体行为。
+ * 每个 SpelFieldReference 实例代表一个字段引用（如 #this.userName 中的 "userName"）。
+ * <p>
+ * 支持的功能：
+ * <ul>
+ *   <li>Ctrl+Click 跳转：点击字段名跳转到字段定义</li>
+ *   <li>Find Usages：在查找使用时包含 SpEL 表达式中的引用</li>
+ *   <li>字段重命名：重命名字段时自动更新 SpEL 表达式中的引用</li>
+ *   <li>代码补全：提供字段补全候选项</li>
+ * </ul>
+ * <p>
+ * 嵌套字段支持：
+ * <ul>
+ *   <li>支持简单字段引用：#this.userName</li>
+ *   <li>支持嵌套字段引用：#this.user.address.city</li>
+ *   <li>每一级字段都会创建独立的引用实例</li>
+ * </ul>
+ * <p>
  * 性能优化：
- * - 使用 ReadAction.compute 确保线程安全
- * - 引用解析在后台线程执行
- * 
+ * <ul>
+ *   <li>使用 {@link ReadAction#compute} 确保线程安全</li>
+ *   <li>引用解析在后台线程执行，不阻塞 UI</li>
+ * </ul>
+ * <p>
+ * Requirements: 4.1, 4.2, 4.3, 4.4, 5.1, 5.2, 5.3
+ *
  * @author Sticki
+ * @see PsiReferenceBase
+ * @see SpelFieldReferenceContributor
+ * @see SpelValidatorUtil#resolveNestedField(PsiClass, String)
  */
 public class SpelFieldReference extends PsiReferenceBase<PsiElement> {
     
     private static final Logger LOG = Logger.getInstance(SpelFieldReference.class);
     
     /**
-     * 字段名（可能是嵌套路径，如 "user.name"）
+     * 字段名或字段路径
+     * <p>
+     * 对于简单引用，如 #this.userName，值为 "userName"
+     * 对于嵌套引用，如 #this.user.address，值为 "user.address"
+     * <p>
+     * 注意：每个引用实例只负责路径中的一个字段，
+     * 但 fieldName 存储的是从 #this 开始到当前字段的完整路径
      */
     private final String fieldName;
     
     /**
-     * 上下文类（#this 指向的类）
+     * 上下文类
+     * <p>
+     * 即 #this 变量指向的类，是字段查找的起始点。
+     * 对于嵌套字段，仍然从此类开始逐级解析。
      */
     private final PsiClass contextClass;
     
