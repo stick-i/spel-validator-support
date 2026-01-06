@@ -1,0 +1,205 @@
+package cn.sticki.spel.validator.support.reference;
+
+import cn.sticki.spel.validator.support.util.SpelValidatorUtil;
+import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.openapi.util.TextRange;
+import com.intellij.psi.*;
+import com.intellij.util.IncorrectOperationException;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * SpEL 字段引用实现
+ * 实现字段引用的具体行为（解析、重命名等）
+ * 
+ * 支持以下功能：
+ * - Ctrl+Click 跳转到字段定义
+ * - Find Usages 查找字段使用
+ * - 字段重命名重构
+ * - 代码补全候选项
+ * 
+ * @author Sticki
+ */
+public class SpelFieldReference extends PsiReferenceBase<PsiElement> {
+    
+    /**
+     * 字段名（可能是嵌套路径，如 "user.name"）
+     */
+    private final String fieldName;
+    
+    /**
+     * 上下文类（#this 指向的类）
+     */
+    private final PsiClass contextClass;
+    
+    /**
+     * 构造函数
+     * 
+     * @param element 引用所在的 PSI 元素
+     * @param textRange 引用在元素中的文本范围
+     * @param fieldName 字段名
+     * @param contextClass 上下文类
+     */
+    public SpelFieldReference(@NotNull PsiElement element, 
+                              @NotNull TextRange textRange,
+                              @NotNull String fieldName, 
+                              @Nullable PsiClass contextClass) {
+        super(element, textRange);
+        this.fieldName = fieldName;
+        this.contextClass = contextClass;
+    }
+    
+    /**
+     * 解析字段引用
+     * 返回字段引用指向的 PsiField 对象
+     * 
+     * @return 解析到的 PsiField，如果解析失败返回 null
+     */
+    @Nullable
+    @Override
+    public PsiElement resolve() {
+        if (contextClass == null || fieldName == null || fieldName.isEmpty()) {
+            return null;
+        }
+        
+        try {
+            // 使用工具类解析嵌套字段
+            return SpelValidatorUtil.resolveNestedField(contextClass, fieldName);
+        } catch (Exception e) {
+            // 忽略异常，返回 null
+            return null;
+        }
+    }
+    
+    /**
+     * 处理字段重命名
+     * 当字段被重命名时，更新 SpEL 表达式中的字段引用
+     * 
+     * @param newElementName 新的字段名
+     * @return 更新后的元素
+     * @throws IncorrectOperationException 如果重命名操作失败
+     */
+    @Override
+    public PsiElement handleElementRename(@NotNull String newElementName) throws IncorrectOperationException {
+        try {
+            PsiElement element = getElement();
+            
+            // 获取当前元素的文本
+            String currentText = element.getText();
+            
+            // 计算新的文本
+            TextRange rangeInElement = getRangeInElement();
+            String newText = currentText.substring(0, rangeInElement.getStartOffset()) 
+                    + newElementName 
+                    + currentText.substring(rangeInElement.getEndOffset());
+            
+            // 创建新的字符串字面量
+            PsiElementFactory factory = JavaPsiFacade.getElementFactory(element.getProject());
+            PsiExpression newExpression = factory.createExpressionFromText(newText, element.getContext());
+            
+            // 替换原元素
+            return element.replace(newExpression);
+        } catch (Exception e) {
+            // 如果自定义处理失败，回退到默认实现
+            return super.handleElementRename(newElementName);
+        }
+    }
+    
+    /**
+     * 返回补全候选项
+     * 用于代码补全时显示可用的字段列表
+     * 
+     * @return 补全候选项数组
+     */
+    @NotNull
+    @Override
+    public Object[] getVariants() {
+        if (contextClass == null) {
+            return new Object[0];
+        }
+        
+        try {
+            List<Object> variants = new ArrayList<>();
+            
+            // 确定目标类（处理嵌套字段）
+            PsiClass targetClass = resolveTargetClass();
+            if (targetClass == null) {
+                return new Object[0];
+            }
+            
+            // 获取所有字段
+            List<PsiField> fields = SpelValidatorUtil.getAllFields(targetClass);
+            
+            // 为每个字段创建补全项
+            for (PsiField field : fields) {
+                LookupElementBuilder lookupElement = LookupElementBuilder.create(field.getName())
+                        .withTypeText(field.getType().getPresentableText())
+                        .withIcon(field.getIcon(0));
+                variants.add(lookupElement);
+            }
+            
+            return variants.toArray();
+        } catch (Exception e) {
+            // 忽略异常，返回空数组
+            return new Object[0];
+        }
+    }
+    
+    /**
+     * 解析目标类
+     * 如果字段名包含嵌套路径，解析到最后一级字段的类型
+     * 
+     * @return 目标类
+     */
+    @Nullable
+    private PsiClass resolveTargetClass() {
+        if (contextClass == null) {
+            return null;
+        }
+        
+        // 如果字段名不包含 .，直接返回上下文类
+        int lastDotIndex = fieldName.lastIndexOf('.');
+        if (lastDotIndex == -1) {
+            return contextClass;
+        }
+        
+        // 获取最后一个 . 之前的路径
+        String parentPath = fieldName.substring(0, lastDotIndex);
+        
+        // 解析父路径的字段
+        PsiField parentField = SpelValidatorUtil.resolveNestedField(contextClass, parentPath);
+        if (parentField == null) {
+            return null;
+        }
+        
+        // 获取父字段的类型
+        PsiType fieldType = parentField.getType();
+        if (fieldType instanceof PsiClassType) {
+            return ((PsiClassType) fieldType).resolve();
+        }
+        
+        return null;
+    }
+    
+    /**
+     * 获取字段名
+     * 
+     * @return 字段名
+     */
+    public String getFieldName() {
+        return fieldName;
+    }
+    
+    /**
+     * 获取上下文类
+     * 
+     * @return 上下文类
+     */
+    @Nullable
+    public PsiClass getContextClass() {
+        return contextClass;
+    }
+}

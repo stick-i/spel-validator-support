@@ -50,7 +50,8 @@
                                 implementationClass="cn.sticki.spel.validator.support.completion.SpelFieldCompletionContributor"/>
         
         <!-- Reference resolution for field references in SpEL expressions -->
-        <!-- Will be implemented in task 8 -->
+        <psi.referenceContributor language="JAVA"
+                                  implementation="cn.sticki.spel.validator.support.reference.SpelFieldReferenceContributor"/>
         
         <!-- Error checking for field existence in SpEL expressions -->
         <!-- Will be implemented in task 10 -->
