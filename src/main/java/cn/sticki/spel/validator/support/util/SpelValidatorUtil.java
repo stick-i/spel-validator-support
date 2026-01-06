@@ -1,16 +1,27 @@
 package cn.sticki.spel.validator.support.util;
 
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.psi.*;
+import com.intellij.psi.util.CachedValueProvider;
+import com.intellij.psi.util.CachedValuesManager;
+import com.intellij.psi.util.PsiModificationTracker;
 
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * SpEL Validator 插件核心工具类
  * 提供注解识别、上下文解析、字段查找等通用功能
+ *
+ * 性能优化：
+ * - 使用 CachedValue 缓存字段列表
+ * - 使用 ConcurrentHashMap 缓存字段类型解析结果
  * 
  * @author Sticki
  */
 public class SpelValidatorUtil {
+
+    private static final Logger LOG = Logger.getInstance(SpelValidatorUtil.class);
     
     /**
      * SpEL Validator 约束注解的包名
@@ -26,6 +37,18 @@ public class SpelValidatorUtil {
      * Language 注解的完全限定名
      */
     private static final String LANGUAGE_ANNOTATION = "org.intellij.lang.annotations.Language";
+
+    /**
+     * 字段类型解析缓存
+     * Key: 类的完全限定名 + "." + 字段路径
+     * Value: 解析到的 PsiClass
+     */
+    private static final ConcurrentHashMap<String, PsiClass> fieldTypeCache = new ConcurrentHashMap<>();
+
+    /**
+     * 缓存最大大小，防止内存泄漏
+     */
+    private static final int MAX_CACHE_SIZE = 1000;
     
     /**
      * 判断注解是否为 SpEL Validator 约束注解
@@ -37,20 +60,20 @@ public class SpelValidatorUtil {
         if (annotation == null) {
             return false;
         }
-        
-        // 检查注解的完全限定名
-        String qualifiedName = annotation.getQualifiedName();
-        if (qualifiedName == null) {
-            return false;
-        }
-        
-        // 方法1: 检查注解包名是否为 cn.sticki.spel.validator.constrain
-        if (qualifiedName.startsWith(CONSTRAINT_PACKAGE)) {
-            return true;
-        }
-        
-        // 方法2: 检查注解上是否标注了 @SpelConstraint 元注解
+
         try {
+            // 检查注解的完全限定名
+            String qualifiedName = annotation.getQualifiedName();
+            if (qualifiedName == null) {
+                return false;
+            }
+
+            // 方法1: 检查注解包名是否为 cn.sticki.spel.validator.constrain
+            if (qualifiedName.startsWith(CONSTRAINT_PACKAGE)) {
+                return true;
+            }
+
+            // 方法2: 检查注解上是否标注了 @SpelConstraint 元注解
             PsiClass annotationClass = annotation.resolveAnnotationType();
             if (annotationClass != null) {
                 PsiModifierList modifierList = annotationClass.getModifierList();
@@ -64,7 +87,7 @@ public class SpelValidatorUtil {
                 }
             }
         } catch (Exception e) {
-            // 忽略异常，返回 false
+            LOG.debug("Error checking constraint annotation: " + e.getMessage());
         }
         
         return false;
@@ -84,9 +107,6 @@ public class SpelValidatorUtil {
         try {
             // 获取方法的修饰符列表
             PsiModifierList modifierList = method.getModifierList();
-            if (modifierList == null) {
-                return false;
-            }
             
             // 查找 @Language 注解
             PsiAnnotation languageAnnotation = modifierList.findAnnotation(LANGUAGE_ANNOTATION);
@@ -104,7 +124,7 @@ public class SpelValidatorUtil {
             String languageValue = value.getText().replace("\"", "");
             return "SpEL".equals(languageValue);
         } catch (Exception e) {
-            // 忽略异常，返回 false
+            LOG.debug("Error checking SpEL language attribute: " + e.getMessage());
             return false;
         }
     }
@@ -134,7 +154,7 @@ public class SpelValidatorUtil {
                 parent = parent.getParent();
             }
         } catch (Exception e) {
-            // 忽略异常，返回 null
+            LOG.debug("Error getting context class: " + e.getMessage());
         }
         
         return null;
@@ -142,11 +162,37 @@ public class SpelValidatorUtil {
     
     /**
      * 获取类的所有字段（包括父类字段）
+     * 使用 CachedValue 缓存结果，提高性能
      * 
      * @param psiClass 类对象
      * @return 所有字段的列表
      */
     public static List<PsiField> getAllFields(PsiClass psiClass) {
+        if (psiClass == null) {
+            return java.util.Collections.emptyList();
+        }
+
+        try {
+            // 使用 CachedValuesManager 缓存字段列表
+            return CachedValuesManager.getCachedValue(psiClass, () -> {
+                List<PsiField> allFields = collectAllFields(psiClass);
+                // 依赖 PSI 修改追踪器，当类结构变化时自动失效
+                return CachedValueProvider.Result.create(allFields, PsiModificationTracker.MODIFICATION_COUNT);
+            });
+        } catch (Exception e) {
+            LOG.warn("Error getting all fields with cache, falling back to direct collection: " + e.getMessage());
+            // 缓存失败时回退到直接收集
+            return collectAllFields(psiClass);
+        }
+    }
+
+    /**
+     * 直接收集类的所有字段（包括父类字段）
+     *
+     * @param psiClass 类对象
+     * @return 所有字段的列表
+     */
+    private static List<PsiField> collectAllFields(PsiClass psiClass) {
         if (psiClass == null) {
             return java.util.Collections.emptyList();
         }
@@ -174,13 +220,14 @@ public class SpelValidatorUtil {
             
             return allFields;
         } catch (Exception e) {
-            // 忽略异常，返回空列表
+            LOG.debug("Error collecting fields: " + e.getMessage());
             return java.util.Collections.emptyList();
         }
     }
     
     /**
      * 解析嵌套字段路径（如 "user.name"）
+     * 使用缓存优化字段类型解析
      * 
      * @param startClass 起始类
      * @param fieldPath 字段路径，用 . 分隔
@@ -199,7 +246,9 @@ public class SpelValidatorUtil {
             PsiField currentField = null;
             
             // 逐级解析字段
-            for (String fieldName : fieldNames) {
+            for (int i = 0; i < fieldNames.length; i++) {
+                String fieldName = fieldNames[i];
+
                 if (currentClass == null) {
                     return null;
                 }
@@ -211,22 +260,70 @@ public class SpelValidatorUtil {
                 }
                 
                 // 如果不是最后一个字段，获取字段类型作为下一级的类
-                if (!fieldName.equals(fieldNames[fieldNames.length - 1])) {
-                    PsiType fieldType = currentField.getType();
-                    if (fieldType instanceof PsiClassType) {
-                        currentClass = ((PsiClassType) fieldType).resolve();
-                    } else {
-                        // 字段类型不是类类型，无法继续解析
-                        return null;
-                    }
+                if (i < fieldNames.length - 1) {
+                    currentClass = resolveFieldType(currentClass, fieldName, currentField);
                 }
             }
-            
+
             return currentField;
         } catch (Exception e) {
-            // 忽略异常，返回 null
+            LOG.debug("Error resolving nested field '" + fieldPath + "': " + e.getMessage());
             return null;
         }
+    }
+
+    /**
+     * 解析字段类型，使用缓存优化
+     *
+     * @param containingClass 包含字段的类
+     * @param fieldName       字段名
+     * @param field           字段对象
+     * @return 字段类型对应的 PsiClass
+     */
+    private static PsiClass resolveFieldType(PsiClass containingClass, String fieldName, PsiField field) {
+        if (field == null) {
+            return null;
+        }
+
+        try {
+            // 构建缓存键
+            String cacheKey = containingClass.getQualifiedName() + "." + fieldName;
+
+            // 检查缓存大小，防止内存泄漏
+            if (fieldTypeCache.size() > MAX_CACHE_SIZE) {
+                fieldTypeCache.clear();
+                LOG.debug("Field type cache cleared due to size limit");
+            }
+
+            // 尝试从缓存获取
+            PsiClass cachedClass = fieldTypeCache.get(cacheKey);
+            if (cachedClass != null && cachedClass.isValid()) {
+                return cachedClass;
+            }
+
+            // 解析字段类型
+            PsiType fieldType = field.getType();
+            if (fieldType instanceof PsiClassType) {
+                PsiClass resolvedClass = ((PsiClassType) fieldType).resolve();
+                if (resolvedClass != null) {
+                    fieldTypeCache.put(cacheKey, resolvedClass);
+                }
+                return resolvedClass;
+            }
+
+            return null;
+        } catch (Exception e) {
+            LOG.debug("Error resolving field type: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 清除字段类型缓存
+     * 用于测试或手动清理
+     */
+    public static void clearFieldTypeCache() {
+        fieldTypeCache.clear();
     }
     
     /**
@@ -240,22 +337,26 @@ public class SpelValidatorUtil {
         if (psiClass == null || fieldName == null) {
             return null;
         }
-        
-        PsiClass currentClass = psiClass;
-        while (currentClass != null) {
-            // 在当前类中查找字段
-            PsiField field = currentClass.findFieldByName(fieldName, false);
-            if (field != null) {
-                return field;
+
+        try {
+            PsiClass currentClass = psiClass;
+            while (currentClass != null) {
+                // 在当前类中查找字段
+                PsiField field = currentClass.findFieldByName(fieldName, false);
+                if (field != null) {
+                    return field;
+                }
+
+                // 移动到父类
+                currentClass = currentClass.getSuperClass();
+
+                // 避免搜索 Object 类
+                if (currentClass != null && "java.lang.Object".equals(currentClass.getQualifiedName())) {
+                    break;
+                }
             }
-            
-            // 移动到父类
-            currentClass = currentClass.getSuperClass();
-            
-            // 避免搜索 Object 类
-            if (currentClass != null && "java.lang.Object".equals(currentClass.getQualifiedName())) {
-                break;
-            }
+        } catch (Exception e) {
+            LOG.debug("Error finding field '" + fieldName + "' in class hierarchy: " + e.getMessage());
         }
         
         return null;

@@ -3,6 +3,8 @@ package cn.sticki.spel.validator.support.completion;
 import cn.sticki.spel.validator.support.util.SpelValidatorUtil;
 import com.intellij.codeInsight.completion.*;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.psi.*;
 import com.intellij.util.ProcessingContext;
@@ -14,9 +16,14 @@ import java.util.List;
  * SpEL 字段补全贡献者
  * 为 SpEL 表达式中的 #this. 提供字段补全
  * 
+ * 性能优化：
+ * - 使用 ReadAction.compute 确保线程安全
+ * 
  * @author Sticki
  */
 public class SpelFieldCompletionContributor extends CompletionContributor {
+    
+    private static final Logger LOG = Logger.getInstance(SpelFieldCompletionContributor.class);
     
     public SpelFieldCompletionContributor() {
         // 注册补全模式：匹配字符串字面量中的位置
@@ -35,6 +42,7 @@ public class SpelFieldCompletionContributor extends CompletionContributor {
     
     /**
      * 添加字段补全项
+     * 使用 ReadAction.compute 确保线程安全
      * 
      * @param parameters 补全参数
      * @param result 补全结果集
@@ -42,50 +50,68 @@ public class SpelFieldCompletionContributor extends CompletionContributor {
     private void addFieldCompletions(@NotNull CompletionParameters parameters,
                                      @NotNull CompletionResultSet result) {
         try {
-            PsiElement position = parameters.getPosition();
-            PsiElement originalPosition = parameters.getOriginalPosition();
-            
-            // 检查是否在 SpEL 表达式中（约束注解的字符串字面量）
-            if (!isInSpelExpression(position)) {
-                return;
-            }
-            
-            // 获取补全位置的文本（使用 originalPosition 获取更准确的文本）
-            String text = getCompletionText(originalPosition != null ? originalPosition : position);
-            if (text == null) {
-                return;
-            }
-            
-            // 检查是否为 #this. 或嵌套字段访问
-            if (!text.contains("#this.")) {
-                return;
-            }
-            
-            // 获取上下文类
-            PsiClass contextClass = getContextClass(position);
-            if (contextClass == null) {
-                return;
-            }
-            
-            // 解析字段路径
-            String fieldPath = extractFieldPath(text);
-            PsiClass targetClass = resolveTargetClass(contextClass, fieldPath);
-            
-            if (targetClass == null) {
-                return;
-            }
-            
-            // 收集所有字段并创建补全项
-            List<PsiField> fields = SpelValidatorUtil.getAllFields(targetClass);
-            
-            // 使用空前缀匹配器，确保所有结果都能显示
-            CompletionResultSet resultWithPrefix = result.withPrefixMatcher("");
-            
-            for (PsiField field : fields) {
-                resultWithPrefix.addElement(createFieldLookupElement(field));
-            }
+            // 使用 ReadAction.compute 确保在读取操作中执行
+            ReadAction.run(() -> {
+                try {
+                    addFieldCompletionsInternal(parameters, result);
+                } catch (Exception e) {
+                    LOG.debug("Error adding field completions: " + e.getMessage());
+                }
+            });
         } catch (Exception e) {
-            // 忽略异常，不影响 IDEA 正常功能
+            LOG.warn("Error in ReadAction while adding field completions: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 内部方法：添加字段补全项
+     * 
+     * @param parameters 补全参数
+     * @param result 补全结果集
+     */
+    private void addFieldCompletionsInternal(@NotNull CompletionParameters parameters,
+                                              @NotNull CompletionResultSet result) {
+        PsiElement position = parameters.getPosition();
+        PsiElement originalPosition = parameters.getOriginalPosition();
+        
+        // 检查是否在 SpEL 表达式中（约束注解的字符串字面量）
+        if (!isInSpelExpression(position)) {
+            return;
+        }
+        
+        // 获取补全位置的文本（使用 originalPosition 获取更准确的文本）
+        String text = getCompletionText(originalPosition != null ? originalPosition : position);
+        if (text == null) {
+            return;
+        }
+        
+        // 检查是否为 #this. 或嵌套字段访问
+        if (!text.contains("#this.")) {
+            return;
+        }
+        
+        // 获取上下文类
+        PsiClass contextClass = getContextClass(position);
+        if (contextClass == null) {
+            return;
+        }
+        
+        // 解析字段路径
+        String fieldPath = extractFieldPath(text);
+        PsiClass targetClass = resolveTargetClass(contextClass, fieldPath);
+        
+        if (targetClass == null) {
+            return;
+        }
+        
+        // 收集所有字段并创建补全项
+        List<PsiField> fields = SpelValidatorUtil.getAllFields(targetClass);
+        
+        // 使用空前缀匹配器，确保所有结果都能显示
+        CompletionResultSet resultWithPrefix = result.withPrefixMatcher("");
+        
+        for (PsiField field : fields) {
+            resultWithPrefix.addElement(createFieldLookupElement(field));
         }
     }
     

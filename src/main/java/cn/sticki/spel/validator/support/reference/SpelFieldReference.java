@@ -2,6 +2,8 @@ package cn.sticki.spel.validator.support.reference;
 
 import cn.sticki.spel.validator.support.util.SpelValidatorUtil;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.*;
 import com.intellij.util.IncorrectOperationException;
@@ -21,9 +23,15 @@ import java.util.List;
  * - 字段重命名重构
  * - 代码补全候选项
  * 
+ * 性能优化：
+ * - 使用 ReadAction.compute 确保线程安全
+ * - 引用解析在后台线程执行
+ * 
  * @author Sticki
  */
 public class SpelFieldReference extends PsiReferenceBase<PsiElement> {
+    
+    private static final Logger LOG = Logger.getInstance(SpelFieldReference.class);
     
     /**
      * 字段名（可能是嵌套路径，如 "user.name"）
@@ -55,6 +63,7 @@ public class SpelFieldReference extends PsiReferenceBase<PsiElement> {
     /**
      * 解析字段引用
      * 返回字段引用指向的 PsiField 对象
+     * 使用 ReadAction.compute 确保线程安全
      * 
      * @return 解析到的 PsiField，如果解析失败返回 null
      */
@@ -66,10 +75,18 @@ public class SpelFieldReference extends PsiReferenceBase<PsiElement> {
         }
         
         try {
-            // 使用工具类解析嵌套字段
-            return SpelValidatorUtil.resolveNestedField(contextClass, fieldName);
+            // 使用 ReadAction.compute 确保在读取操作中执行，保证线程安全
+            return ReadAction.compute(() -> {
+                try {
+                    // 使用工具类解析嵌套字段
+                    return SpelValidatorUtil.resolveNestedField(contextClass, fieldName);
+                } catch (Exception e) {
+                    LOG.debug("Error resolving field reference '" + fieldName + "': " + e.getMessage());
+                    return null;
+                }
+            });
         } catch (Exception e) {
-            // 忽略异常，返回 null
+            LOG.warn("Error in ReadAction while resolving field reference: " + e.getMessage());
             return null;
         }
     }
@@ -103,6 +120,7 @@ public class SpelFieldReference extends PsiReferenceBase<PsiElement> {
             // 替换原元素
             return element.replace(newExpression);
         } catch (Exception e) {
+            LOG.debug("Error handling element rename, falling back to default: " + e.getMessage());
             // 如果自定义处理失败，回退到默认实现
             return super.handleElementRename(newElementName);
         }
@@ -111,6 +129,7 @@ public class SpelFieldReference extends PsiReferenceBase<PsiElement> {
     /**
      * 返回补全候选项
      * 用于代码补全时显示可用的字段列表
+     * 使用 ReadAction.compute 确保线程安全
      * 
      * @return 补全候选项数组
      */
@@ -122,28 +141,36 @@ public class SpelFieldReference extends PsiReferenceBase<PsiElement> {
         }
         
         try {
-            List<Object> variants = new ArrayList<>();
-            
-            // 确定目标类（处理嵌套字段）
-            PsiClass targetClass = resolveTargetClass();
-            if (targetClass == null) {
-                return new Object[0];
-            }
-            
-            // 获取所有字段
-            List<PsiField> fields = SpelValidatorUtil.getAllFields(targetClass);
-            
-            // 为每个字段创建补全项
-            for (PsiField field : fields) {
-                LookupElementBuilder lookupElement = LookupElementBuilder.create(field.getName())
-                        .withTypeText(field.getType().getPresentableText())
-                        .withIcon(field.getIcon(0));
-                variants.add(lookupElement);
-            }
-            
-            return variants.toArray();
+            // 使用 ReadAction.compute 确保在读取操作中执行
+            return ReadAction.compute(() -> {
+                try {
+                    List<Object> variants = new ArrayList<>();
+                    
+                    // 确定目标类（处理嵌套字段）
+                    PsiClass targetClass = resolveTargetClass();
+                    if (targetClass == null) {
+                        return new Object[0];
+                    }
+                    
+                    // 获取所有字段
+                    List<PsiField> fields = SpelValidatorUtil.getAllFields(targetClass);
+                    
+                    // 为每个字段创建补全项
+                    for (PsiField field : fields) {
+                        LookupElementBuilder lookupElement = LookupElementBuilder.create(field.getName())
+                                .withTypeText(field.getType().getPresentableText())
+                                .withIcon(field.getIcon(0));
+                        variants.add(lookupElement);
+                    }
+                    
+                    return variants.toArray();
+                } catch (Exception e) {
+                    LOG.debug("Error getting variants: " + e.getMessage());
+                    return new Object[0];
+                }
+            });
         } catch (Exception e) {
-            // 忽略异常，返回空数组
+            LOG.warn("Error in ReadAction while getting variants: " + e.getMessage());
             return new Object[0];
         }
     }

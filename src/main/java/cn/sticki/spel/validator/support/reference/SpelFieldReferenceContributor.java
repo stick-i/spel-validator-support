@@ -1,6 +1,8 @@
 package cn.sticki.spel.validator.support.reference;
 
 import cn.sticki.spel.validator.support.util.SpelValidatorUtil;
+import com.intellij.openapi.application.ReadAction;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.psi.*;
@@ -21,9 +23,14 @@ import java.util.regex.Pattern;
  * - Find Usages 查找字段使用
  * - 字段重命名重构
  * 
+ * 性能优化：
+ * - 使用 ReadAction.compute 确保线程安全
+ * 
  * @author Sticki
  */
 public class SpelFieldReferenceContributor extends PsiReferenceContributor {
+    
+    private static final Logger LOG = Logger.getInstance(SpelFieldReferenceContributor.class);
     
     /**
      * 匹配 #this.fieldName 或 #this.field1.field2 的正则表达式
@@ -49,6 +56,7 @@ public class SpelFieldReferenceContributor extends PsiReferenceContributor {
     
     /**
      * 获取元素中的字段引用
+     * 使用 ReadAction.compute 确保线程安全
      * 
      * @param element PSI 元素
      * @return 引用数组
@@ -56,43 +64,62 @@ public class SpelFieldReferenceContributor extends PsiReferenceContributor {
     @NotNull
     private PsiReference[] getFieldReferences(@NotNull PsiElement element) {
         try {
-            // 检查是否为字符串字面量
-            if (!(element instanceof PsiLiteralExpression)) {
-                return PsiReference.EMPTY_ARRAY;
-            }
-            
-            PsiLiteralExpression literal = (PsiLiteralExpression) element;
-            Object value = literal.getValue();
-            
-            // 检查是否为字符串类型
-            if (!(value instanceof String)) {
-                return PsiReference.EMPTY_ARRAY;
-            }
-            
-            String text = (String) value;
-            
-            // 检查是否包含 #this.
-            if (!text.contains("#this.")) {
-                return PsiReference.EMPTY_ARRAY;
-            }
-            
-            // 检查是否在约束注解中
-            if (!isInConstraintAnnotation(element)) {
-                return PsiReference.EMPTY_ARRAY;
-            }
-            
-            // 获取上下文类
-            PsiClass contextClass = getContextClass(element);
-            if (contextClass == null) {
-                return PsiReference.EMPTY_ARRAY;
-            }
-            
-            // 解析所有字段引用
-            return parseFieldReferences(element, text, contextClass);
+            // 使用 ReadAction.compute 确保在读取操作中执行
+            return ReadAction.compute(() -> {
+                try {
+                    return getFieldReferencesInternal(element);
+                } catch (Exception e) {
+                    LOG.debug("Error getting field references: " + e.getMessage());
+                    return PsiReference.EMPTY_ARRAY;
+                }
+            });
         } catch (Exception e) {
-            // 忽略异常，返回空数组
+            LOG.warn("Error in ReadAction while getting field references: " + e.getMessage());
             return PsiReference.EMPTY_ARRAY;
         }
+    }
+    
+    /**
+     * 内部方法：获取元素中的字段引用
+     * 
+     * @param element PSI 元素
+     * @return 引用数组
+     */
+    @NotNull
+    private PsiReference[] getFieldReferencesInternal(@NotNull PsiElement element) {
+        // 检查是否为字符串字面量
+        if (!(element instanceof PsiLiteralExpression)) {
+            return PsiReference.EMPTY_ARRAY;
+        }
+        
+        PsiLiteralExpression literal = (PsiLiteralExpression) element;
+        Object value = literal.getValue();
+        
+        // 检查是否为字符串类型
+        if (!(value instanceof String)) {
+            return PsiReference.EMPTY_ARRAY;
+        }
+        
+        String text = (String) value;
+        
+        // 检查是否包含 #this.
+        if (!text.contains("#this.")) {
+            return PsiReference.EMPTY_ARRAY;
+        }
+        
+        // 检查是否在约束注解中
+        if (!isInConstraintAnnotation(element)) {
+            return PsiReference.EMPTY_ARRAY;
+        }
+        
+        // 获取上下文类
+        PsiClass contextClass = getContextClass(element);
+        if (contextClass == null) {
+            return PsiReference.EMPTY_ARRAY;
+        }
+        
+        // 解析所有字段引用
+        return parseFieldReferences(element, text, contextClass);
     }
     
     /**
