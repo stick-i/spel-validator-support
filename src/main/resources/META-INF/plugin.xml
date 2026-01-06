@@ -46,7 +46,8 @@
         <languageInjector implementation="cn.sticki.spel.validator.support.injection.SpelLanguageInjector"/>
         
         <!-- Code completion for #this fields in SpEL expressions -->
-        <!-- Will be implemented in task 6 -->
+        <completion.contributor language="JAVA" 
+                                implementationClass="cn.sticki.spel.validator.support.completion.SpelFieldCompletionContributor"/>
         
         <!-- Reference resolution for field references in SpEL expressions -->
         <!-- Will be implemented in task 8 -->
