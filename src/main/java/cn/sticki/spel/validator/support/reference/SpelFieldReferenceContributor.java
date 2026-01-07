@@ -77,6 +77,8 @@ public class SpelFieldReferenceContributor extends PsiReferenceContributor {
      */
     @Override
     public void registerReferenceProviders(@NotNull PsiReferenceRegistrar registrar) {
+        LOG.warn("SpelFieldReferenceContributor.registerReferenceProviders() called - registering provider");
+        
         // 注册引用提供者：匹配字符串字面量
         registrar.registerReferenceProvider(
                 PlatformPatterns.psiElement(PsiLiteralExpression.class),
@@ -85,6 +87,7 @@ public class SpelFieldReferenceContributor extends PsiReferenceContributor {
                     @Override
                     public PsiReference[] getReferencesByElement(@NotNull PsiElement element,
                                                                  @NotNull ProcessingContext context) {
+                        LOG.warn("getReferencesByElement called for: " + element.getText());
                         return getFieldReferences(element);
                     }
                 }
@@ -144,19 +147,29 @@ public class SpelFieldReferenceContributor extends PsiReferenceContributor {
             return PsiReference.EMPTY_ARRAY;
         }
         
+        LOG.warn("Found #this. in text: " + text);
+        
         // 检查是否在约束注解中
         if (!isInConstraintAnnotation(element)) {
+            LOG.warn("Not in constraint annotation, skipping");
             return PsiReference.EMPTY_ARRAY;
         }
+        
+        LOG.warn("In constraint annotation, proceeding");
         
         // 获取上下文类
         PsiClass contextClass = getContextClass(element);
         if (contextClass == null) {
+            LOG.warn("Context class is null, skipping");
             return PsiReference.EMPTY_ARRAY;
         }
         
+        LOG.warn("Context class: " + contextClass.getQualifiedName());
+        
         // 解析所有字段引用
-        return parseFieldReferences(element, text, contextClass);
+        PsiReference[] refs = parseFieldReferences(element, text, contextClass);
+        LOG.warn("Created " + refs.length + " references");
+        return refs;
     }
     
     /**

@@ -97,23 +97,27 @@ public class SpelFieldReference extends PsiReferenceBase<PsiElement> {
     @Nullable
     @Override
     public PsiElement resolve() {
+        LOG.warn("SpelFieldReference.resolve() called for field: " + fieldName);
+        
         if (contextClass == null || fieldName == null || fieldName.isEmpty()) {
+            LOG.warn("resolve() returning null - contextClass or fieldName is null/empty");
             return null;
         }
         
         try {
-            // 使用 ReadAction.compute 确保在读取操作中执行，保证线程安全
-            return ReadAction.compute(() -> {
-                try {
-                    // 使用工具类解析嵌套字段
-                    return SpelValidatorUtil.resolveNestedField(contextClass, fieldName);
-                } catch (Exception e) {
-                    LOG.debug("Error resolving field reference '" + fieldName + "': " + e.getMessage());
-                    return null;
-                }
-            });
+            // 使用工具类解析嵌套字段
+            PsiField result = SpelValidatorUtil.resolveNestedField(contextClass, fieldName);
+            if (result != null) {
+                LOG.warn("resolve() result for '" + fieldName + "': " + result.toString() + 
+                        ", isValid=" + result.isValid() + 
+                        ", isPhysical=" + result.isPhysical() +
+                        ", containingFile=" + (result.getContainingFile() != null ? result.getContainingFile().getName() : "null"));
+            } else {
+                LOG.warn("resolve() result for '" + fieldName + "': null");
+            }
+            return result;
         } catch (Exception e) {
-            LOG.warn("Error in ReadAction while resolving field reference: " + e.getMessage());
+            LOG.warn("Error resolving field reference '" + fieldName + "': " + e.getMessage());
             return null;
         }
     }

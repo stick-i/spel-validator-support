@@ -46,15 +46,24 @@
         <languageInjector implementation="cn.sticki.spel.validator.support.injection.SpelLanguageInjector"/>
         
         <!-- Code completion for #this fields in SpEL expressions -->
-        <completion.contributor language="JAVA" 
-                                implementationClass="cn.sticki.spel.validator.support.completion.SpelFieldCompletionContributor"/>
+        <!-- <completion.contributor language="JAVA" -->
+        <!--                         implementationClass="cn.sticki.spel.validator.support.completion.SpelFieldCompletionContributor"/> -->
         
         <!-- Reference resolution for field references in SpEL expressions -->
-        <psi.referenceContributor language="JAVA"
-                                  implementation="cn.sticki.spel.validator.support.reference.SpelFieldReferenceContributor"/>
+        <!-- <psi.referenceContributor language="JAVA" -->
+        <!--                           implementation="cn.sticki.spel.validator.support.reference.SpelFieldReferenceContributor"/> -->
         
         <!-- Error checking for field existence in SpEL expressions -->
         <annotator language="JAVA"
                    implementationClass="cn.sticki.spel.validator.support.inspection.SpelFieldAnnotator"/>
+        
+        <!-- Goto declaration handler for Ctrl+Click navigation in SpEL expressions -->
+        <!-- order="first" ensures our handler runs before Spring plugin's handler -->
+        <!-- <gotoDeclarationHandler order="first" -->
+        <!--            implementation="cn.sticki.spel.validator.support.navigation.SpelFieldGotoDeclarationHandler"/> -->
+        
+        <!-- Find Usages support for fields referenced in SpEL expressions -->
+        <!-- <referencesSearch -->
+        <!--            implementation="cn.sticki.spel.validator.support.reference.SpelFieldUsagesSearcher"/> -->
     </extensions>
 </idea-plugin>

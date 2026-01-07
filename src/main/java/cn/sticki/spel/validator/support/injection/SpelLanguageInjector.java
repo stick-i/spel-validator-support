@@ -3,6 +3,7 @@ package cn.sticki.spel.validator.support.injection;
 import cn.sticki.spel.validator.support.util.SpelValidatorUtil;
 import com.intellij.lang.Language;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.*;
 import org.jetbrains.annotations.NotNull;
 
@@ -153,7 +154,11 @@ public class SpelLanguageInjector implements LanguageInjector {
         Language spelLanguage = Language.findLanguageByID(SPEL_LANGUAGE_ID);
         if (spelLanguage != null) {
             LOG.debug("Injecting SpEL language for: " + value);
-            injectedLanguagePlaces.addPlace(spelLanguage, host.getTextRange(), null, null);
+            String text = host.getText();
+            if (text.length() >= 2 && text.startsWith("\"") && text.endsWith("\"")) {
+                injectedLanguagePlaces.addPlace(spelLanguage,
+                        TextRange.from(1, text.length() - 2), null, null);
+            }
         } else {
             LOG.debug("SpEL language not found, skipping injection");
         }
