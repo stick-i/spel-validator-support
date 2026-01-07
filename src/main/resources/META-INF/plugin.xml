@@ -13,8 +13,8 @@
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description><![CDATA[
-        <p>为 SpEL Validator 框架提供智能开发支持的 IntelliJ IDEA 插件。</p>
-        <p>Intelligent development support for SpEL Validator framework in IntelliJ IDEA.</p>
+        <p>为 SpEL Validator 框架提供开发支持的 IntelliJ IDEA 插件。</p>
+        <p>Development support for SpEL Validator framework in IntelliJ IDEA.</p>
         
         <h3>主要功能 / Features:</h3>
         <ul>
@@ -37,33 +37,12 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
     <depends>org.intellij.intelliLang</depends>
-    <depends optional="true" config-file="spring-support.xml">com.intellij.spring</depends>
+    <depends config-file="spring-support.xml">com.intellij.spring</depends>
 
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
         <!-- Language injection for SpEL expressions in SpEL Validator annotations -->
         <languageInjector implementation="cn.sticki.spel.validator.support.injection.SpelLanguageInjector"/>
-        
-        <!-- Code completion for #this fields in SpEL expressions -->
-        <!-- <completion.contributor language="JAVA" -->
-        <!--                         implementationClass="cn.sticki.spel.validator.support.completion.SpelFieldCompletionContributor"/> -->
-        
-        <!-- Reference resolution for field references in SpEL expressions -->
-        <!-- <psi.referenceContributor language="JAVA" -->
-        <!--                           implementation="cn.sticki.spel.validator.support.reference.SpelFieldReferenceContributor"/> -->
-        
-        <!-- Error checking for field existence in SpEL expressions -->
-        <annotator language="JAVA"
-                   implementationClass="cn.sticki.spel.validator.support.inspection.SpelFieldAnnotator"/>
-        
-        <!-- Goto declaration handler for Ctrl+Click navigation in SpEL expressions -->
-        <!-- order="first" ensures our handler runs before Spring plugin's handler -->
-        <!-- <gotoDeclarationHandler order="first" -->
-        <!--            implementation="cn.sticki.spel.validator.support.navigation.SpelFieldGotoDeclarationHandler"/> -->
-        
-        <!-- Find Usages support for fields referenced in SpEL expressions -->
-        <!-- <referencesSearch -->
-        <!--            implementation="cn.sticki.spel.validator.support.reference.SpelFieldUsagesSearcher"/> -->
     </extensions>
 </idea-plugin>

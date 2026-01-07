@@ -34,8 +34,6 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * @author Sticki
  * @see cn.sticki.spel.validator.support.injection.SpelLanguageInjector
- * @see cn.sticki.spel.validator.support.completion.SpelFieldCompletionContributor
- * @see cn.sticki.spel.validator.support.reference.SpelFieldReferenceContributor
  */
 public class SpelValidatorUtil {
 
