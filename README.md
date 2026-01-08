@@ -43,7 +43,7 @@ SpEL Validator 是一个基于 Spring Expression Language 的 Java 参数校验�
 
 #### 5. 错误检查
 - 实时检查字段引用的有效性
-- 对不存在的字段显示红色波浪线
+- 对不存在的字段显示警告
 - 鼠标悬停显示错误消息
 - 支持嵌套字段的错误检查
 
@@ -68,9 +68,9 @@ SpEL Validator 是一个基于 Spring Expression Language 的 Java 参数校验�
 
 ### 系统要求
 
-- IntelliJ IDEA 2023.2 或更高版本
+- IntelliJ IDEA 2023.2 (Ultimate Edition) 或更高版本
 - Java 17 或更高版本（开发环境需要 Java 21）
-- 推荐安装 Spring 插件以获得完整的 SpEL 语言支持
+- 需要启用 Spring 插件以获得的 SpEL 语言支持，默认状态下已经启用了
 
 ### 安装
 

@@ -24,6 +24,11 @@ dependencies {
         bundledPlugin('com.intellij.java')
         bundledPlugin('org.intellij.intelliLang')
         bundledPlugin('com.intellij.spring')
+        bundledPlugin('com.intellij.javaee.el')
+
+        // Spring 插件可能依赖的插件
+        testBundledPlugin('com.intellij.java-i18n')
+        testBundledPlugin('com.intellij.properties')
 
         // 这两个组合会自动提供 IDEA 测试基类所需的全部依赖（含 JUnit 4）
         testFramework(TestFrameworkType.Platform.INSTANCE)
@@ -38,10 +43,6 @@ dependencies {
     // 兼容旧版 JUnit 3/4 测试运行
     testRuntimeOnly 'org.junit.vintage:junit-vintage-engine'
     testImplementation 'junit:junit:4.13.2'
-
-    // 功能性测试库
-    testImplementation 'org.quicktheories:quicktheories:0.26'
-    testImplementation 'org.assertj:assertj-core:3.26.3'
 }
 
 intellijPlatform {
