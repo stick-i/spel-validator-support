@@ -2,8 +2,12 @@ import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 
 plugins {
     id 'java'
-    id 'org.jetbrains.intellij.platform' version '2.5.0'
+    id("org.jetbrains.intellij.platform") version "2.10.5"
 }
+
+apply plugin: 'idea'
+apply plugin: 'java'
+apply plugin: 'org.jetbrains.intellij.platform'
 
 group = 'cn.sticki'
 version = '1.0.0'
@@ -13,6 +17,13 @@ repositories {
     intellijPlatform {
         defaultRepositories()
     }
+}
+
+// Simple function to load change-notes.html and description.html into valid text for plugin.xml
+def htmlFixer = { f -> file(f).text.replace('<html>', '').replace('</html>', '') }
+
+patchPluginXml {
+    changeNotes = htmlFixer('change-notes.html')
 }
 
 // Configure IntelliJ Platform Gradle Plugin
@@ -54,18 +65,6 @@ intellijPlatform {
             sinceBuild = '232'  // 2023.2
             untilBuild = ''     // No upper limit
         }
-
-        changeNotes = '''
-            <h3>1.0.0</h3>
-            <ul>
-                <li>Initial release</li>
-                <li>SpEL language injection for SpEL Validator annotations</li>
-                <li>Field completion for #this context</li>
-                <li>Field reference resolution and navigation</li>
-                <li>Field rename refactoring support</li>
-                <li>Field existence error checking</li>
-            </ul>
-        '''.stripIndent()
     }
 }
 

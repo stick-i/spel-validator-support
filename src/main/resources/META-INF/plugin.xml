@@ -8,7 +8,7 @@
     <name>SpEL Validator Support</name>
 
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
-    <vendor email="support@sticki.cn" url="https://github.com/stick-i/spel-validator">Sticki</vendor>
+    <vendor email="sticki@126.com" url="https://github.com/stick-i/spel-validator">阿杆</vendor>
 
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
@@ -24,7 +24,7 @@
             <li>字段重命名重构支持 / Field rename refactoring support</li>
             <li>字段存在性错误检查 / Field existence error checking</li>
         </ul>
-        
+
         <h3>关于 SpEL Validator / About SpEL Validator:</h3>
         <p>SpEL Validator 是一个基于 Spring Expression Language 的 Java 参数校验框架。</p>
         <p>SpEL Validator is a Java parameter validation framework based on Spring Expression Language.</p>
