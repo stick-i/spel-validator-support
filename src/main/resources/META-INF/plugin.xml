@@ -13,8 +13,8 @@
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
     <description><![CDATA[
-        <p>为 SpEL Validator 框架提供开发支持的 IntelliJ IDEA 插件。</p>
         <p>Development support for SpEL Validator framework in IntelliJ IDEA.</p>
+        <p>为 SpEL Validator 框架提供开发支持的 IntelliJ IDEA 插件。</p>
         
         <h3>主要功能 / Features:</h3>
         <ul>
