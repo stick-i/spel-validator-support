@@ -1,7 +1,7 @@
 <!-- Optional Spring plugin support configuration -->
 <idea-plugin>
     <!-- This file is loaded only when Spring plugin is available -->
-    
+
     <extensions defaultExtensionNs="com.intellij.spring">
         <!-- Provide #this variable context for SpEL Validator annotations -->
         <el.contexts implementation="cn.sticki.spel.validator.support.spring.SpelValidatorElContextsExtension"/>

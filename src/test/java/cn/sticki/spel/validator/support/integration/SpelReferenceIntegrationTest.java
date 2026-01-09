@@ -93,4 +93,5 @@ public class SpelReferenceIntegrationTest extends LightJavaCodeInsightFixtureTes
         assertEquals("city", ((PsiField) element).getName());
         assertEquals("cn.sticki.test.Address", ((PsiField) element).getContainingClass().getQualifiedName());
     }
+
 }

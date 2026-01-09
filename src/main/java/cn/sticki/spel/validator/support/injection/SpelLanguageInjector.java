@@ -36,7 +36,6 @@ import org.jetbrains.annotations.NotNull;
  *   <li>确保异常不会影响 IDEA 的正常功能</li>
  * </ul>
  * <p>
- * Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
  *
  * @author Sticki
  * @see LanguageInjector
@@ -44,9 +43,9 @@ import org.jetbrains.annotations.NotNull;
  * @see SpelValidatorUtil#isSpelLanguageAttribute(PsiMethod)
  */
 public class SpelLanguageInjector implements LanguageInjector {
-    
+
     private static final Logger LOG = Logger.getInstance(SpelLanguageInjector.class);
-    
+
     /**
      * SpEL 语言的 ID
      * <p>
@@ -55,7 +54,7 @@ public class SpelLanguageInjector implements LanguageInjector {
      * 则无法找到该语言，语言注入将被跳过。
      */
     private static final String SPEL_LANGUAGE_ID = "SpEL";
-    
+
     /**
      * 获取需要注入的语言
      * <p>
@@ -65,11 +64,11 @@ public class SpelLanguageInjector implements LanguageInjector {
      * 方法会检查字符串是否位于 SpEL Validator 约束注解的属性中，
      * 如果是，则注入 SpEL 语言支持。
      *
-     * @param host                  语言注入宿主（通常是字符串字面量）
+     * @param host                   语言注入宿主（通常是字符串字面量）
      * @param injectedLanguagePlaces 注入位置的容器，用于添加语言注入
      */
     @Override
-    public void getLanguagesToInject(@NotNull PsiLanguageInjectionHost host, 
+    public void getLanguagesToInject(@NotNull PsiLanguageInjectionHost host,
                                      @NotNull InjectedLanguagePlaces injectedLanguagePlaces) {
         try {
             injectSpelLanguage(host, injectedLanguagePlaces);
@@ -78,32 +77,32 @@ public class SpelLanguageInjector implements LanguageInjector {
             LOG.warn("Error in SpelLanguageInjector.getLanguagesToInject: " + e.getMessage(), e);
         }
     }
-    
+
     /**
      * 内部方法：执行 SpEL 语言注入
-     * 
-     * @param host 语言注入宿主
+     *
+     * @param host                   语言注入宿主
      * @param injectedLanguagePlaces 注入位置
      */
     private void injectSpelLanguage(@NotNull PsiLanguageInjectionHost host,
-                                     @NotNull InjectedLanguagePlaces injectedLanguagePlaces) {
+                                    @NotNull InjectedLanguagePlaces injectedLanguagePlaces) {
         // 1. 检查 host 是否为字符串字面量
         if (!(host instanceof PsiLiteralExpression)) {
             return;
         }
-        
+
         PsiLiteralExpression literalExpression = (PsiLiteralExpression) host;
-        
+
         // 确保是字符串类型
         Object value = literalExpression.getValue();
         if (!(value instanceof String)) {
             return;
         }
-        
+
         // 2. 向上遍历 PSI 树，找到 PsiNameValuePair（注解属性）
         PsiElement parent = literalExpression.getParent();
         PsiNameValuePair nameValuePair = null;
-        
+
         while (parent != null) {
             if (parent instanceof PsiNameValuePair) {
                 nameValuePair = (PsiNameValuePair) parent;
@@ -111,45 +110,45 @@ public class SpelLanguageInjector implements LanguageInjector {
             }
             parent = parent.getParent();
         }
-        
+
         if (nameValuePair == null) {
             return;
         }
-        
+
         // 3. 获取属性对应的方法定义（PsiMethod）
         PsiReference reference = nameValuePair.getReference();
         if (reference == null) {
             return;
         }
-        
+
         PsiElement resolved = reference.resolve();
         if (!(resolved instanceof PsiMethod)) {
             return;
         }
-        
+
         PsiMethod method = (PsiMethod) resolved;
-        
+
         // 4. 检查属性是否标注了 @Language("SpEL")
         if (!SpelValidatorUtil.isSpelLanguageAttribute(method)) {
             return;
         }
-        
+
         // 5. 获取注解对象
         PsiElement annotationParent = nameValuePair.getParent();
         if (!(annotationParent instanceof PsiAnnotationParameterList)) {
             return;
         }
-        
+
         PsiElement annotation = annotationParent.getParent();
         if (!(annotation instanceof PsiAnnotation)) {
             return;
         }
-        
+
         // 6. 检查注解是否为约束注解
         if (!SpelValidatorUtil.isSpelConstraintAnnotation((PsiAnnotation) annotation)) {
             return;
         }
-        
+
         // 7. 注入 SpEL 语言
         Language spelLanguage = Language.findLanguageByID(SPEL_LANGUAGE_ID);
         if (spelLanguage != null) {
@@ -163,4 +162,5 @@ public class SpelLanguageInjector implements LanguageInjector {
             LOG.debug("SpEL language not found, skipping injection");
         }
     }
+
 }

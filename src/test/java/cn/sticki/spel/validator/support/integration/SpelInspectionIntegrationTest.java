@@ -47,7 +47,7 @@ public class SpelInspectionIntegrationTest extends LightJavaCodeInsightFixtureTe
                     String assertTrue() default "";
                 }
                 """);
-        
+
         // 定义基础类，防止 Cannot resolve symbol 'String'
         myFixture.addClass("package java.lang; public class String {}");
         myFixture.addClass("package java.lang; public class Integer {}");
@@ -68,7 +68,7 @@ public class SpelInspectionIntegrationTest extends LightJavaCodeInsightFixtureTe
                 public class TestDto {
                     public String userName;
                     private String status;
-                    
+                
                     @SpelAssert(assertTrue = "#this.nonExistentField")
                     public String getStatus() { return status; }
                 }
@@ -76,7 +76,7 @@ public class SpelInspectionIntegrationTest extends LightJavaCodeInsightFixtureTe
 
         // 执行高亮检查
         List<HighlightInfo> highlights = myFixture.doHighlighting();
-        
+
         // 查找与 nonExistentField 相关的警告
         List<HighlightInfo> fieldHighlights = highlights.stream()
                 .filter(info -> info.getDescription() != null && info.getDescription().contains("nonExistentField"))
@@ -105,7 +105,7 @@ public class SpelInspectionIntegrationTest extends LightJavaCodeInsightFixtureTe
                 import cn.sticki.spel.validator.constrain.SpelAssert;
                 public class NestedTestDto {
                     public Address address;
-                    
+                
                     @SpelAssert(assertTrue = "#this.address.unknownField")
                     private String status;
                 }
@@ -119,4 +119,5 @@ public class SpelInspectionIntegrationTest extends LightJavaCodeInsightFixtureTe
         assertFalse("Spring plugin should provide highlighting for non-existent nested field", fieldHighlights.isEmpty());
         assertEquals(HighlightSeverity.WARNING, fieldHighlights.get(0).getSeverity());
     }
+
 }

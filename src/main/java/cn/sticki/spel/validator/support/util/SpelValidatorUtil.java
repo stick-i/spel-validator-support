@@ -29,8 +29,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * </ul>
  * <p>
  * 线程安全：本类的所有公共方法都是线程安全的
- * <p>
- * Requirements: 1.1, 1.2, 1.3, 2.1, 3.1, 3.2, 3.3, 3.5, 4.4
  *
  * @author Sticki
  * @see cn.sticki.spel.validator.support.injection.SpelLanguageInjector
@@ -38,7 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class SpelValidatorUtil {
 
     private static final Logger LOG = Logger.getInstance(SpelValidatorUtil.class);
-    
+
     /**
      * SpEL Validator 约束注解的包名前缀
      * <p>
@@ -48,7 +46,7 @@ public class SpelValidatorUtil {
      * SpelFutureOrPresent, SpelPastOrPresent 等
      */
     private static final String CONSTRAINT_PACKAGE = "cn.sticki.spel.validator.constrain";
-    
+
     /**
      * SpelConstraint 元注解的完全限定名
      * <p>
@@ -56,7 +54,7 @@ public class SpelValidatorUtil {
      * 这是 SpEL Validator 框架的扩展机制
      */
     private static final String SPEL_CONSTRAINT_ANNOTATION = "cn.sticki.spel.validator.constrain.SpelConstraint";
-    
+
     /**
      * IntelliJ @Language 注解的完全限定名
      * <p>
@@ -85,7 +83,7 @@ public class SpelValidatorUtil {
      * 这是一个简单但有效的缓存淘汰策略
      */
     private static final int MAX_CACHE_SIZE = 1000;
-    
+
     /**
      * 判断注解是否为 SpEL Validator 约束注解
      * <p>
@@ -100,7 +98,7 @@ public class SpelValidatorUtil {
      * // 内置注解
      * @SpelNotNull(condition = "#this.name != null")
      * private String field;
-     * 
+     *
      * // 自定义注解（需要标注 @SpelConstraint）
      * @SpelConstraint
      * public @interface MyConstraint { ... }
@@ -144,10 +142,10 @@ public class SpelValidatorUtil {
         } catch (Exception e) {
             LOG.debug("Error checking constraint annotation: " + e.getMessage());
         }
-        
+
         return false;
     }
-    
+
     /**
      * 判断注解属性是否标注了 @Language("SpEL")
      * <p>
@@ -164,9 +162,9 @@ public class SpelValidatorUtil {
      * 使用示例：
      * <pre>{@code
      * public @interface SpelNotNull {
-     *   @Language("SpEL")  // 此属性会注入 SpEL 语言
+     *   @Language("SpEL") // 此属性会注入 SpEL 语言
      *   String condition() default "";
-     *   
+     *
      *   String message() default "";  // 此属性不会注入
      * }
      * }</pre>
@@ -178,23 +176,23 @@ public class SpelValidatorUtil {
         if (method == null) {
             return false;
         }
-        
+
         try {
             // 获取方法的修饰符列表
             PsiModifierList modifierList = method.getModifierList();
-            
+
             // 查找 @Language 注解
             PsiAnnotation languageAnnotation = modifierList.findAnnotation(LANGUAGE_ANNOTATION);
             if (languageAnnotation == null) {
                 return false;
             }
-            
+
             // 检查 @Language 注解的 value 属性是否为 "SpEL"
             PsiAnnotationMemberValue value = languageAnnotation.findAttributeValue("value");
             if (value == null) {
                 return false;
             }
-            
+
             // 获取注解值的文本内容（去除引号）
             String languageValue = value.getText().replace("\"", "");
             return "SpEL".equals(languageValue);
@@ -203,7 +201,7 @@ public class SpelValidatorUtil {
             return false;
         }
     }
-    
+
     /**
      * 获取注解所在的类（#this 的上下文类）
      * <p>
@@ -229,27 +227,27 @@ public class SpelValidatorUtil {
         if (annotation == null) {
             return null;
         }
-        
+
         try {
             // 从注解向上遍历 PSI 树，找到包含该注解的类
             PsiElement parent = annotation.getParent();
-            
+
             while (parent != null) {
                 // 如果找到类定义，返回该类
                 if (parent instanceof PsiClass) {
                     return (PsiClass) parent;
                 }
-                
+
                 // 继续向上遍历
                 parent = parent.getParent();
             }
         } catch (Exception e) {
             LOG.debug("Error getting context class: " + e.getMessage());
         }
-        
+
         return null;
     }
-    
+
     /**
      * 获取类的所有字段（包括父类字段）
      * <p>
@@ -303,10 +301,10 @@ public class SpelValidatorUtil {
         if (psiClass == null) {
             return java.util.Collections.emptyList();
         }
-        
+
         try {
             List<PsiField> allFields = new java.util.ArrayList<>();
-            
+
             // 递归收集当前类及所有父类的字段
             PsiClass currentClass = psiClass;
             while (currentClass != null) {
@@ -315,23 +313,23 @@ public class SpelValidatorUtil {
                 if (fields != null && fields.length > 0) {
                     allFields.addAll(java.util.Arrays.asList(fields));
                 }
-                
+
                 // 移动到父类
                 currentClass = currentClass.getSuperClass();
-                
+
                 // 避免收集 Object 类的字段
                 if (currentClass != null && "java.lang.Object".equals(currentClass.getQualifiedName())) {
                     break;
                 }
             }
-            
+
             return allFields;
         } catch (Exception e) {
             LOG.debug("Error collecting fields: " + e.getMessage());
             return java.util.Collections.emptyList();
         }
     }
-    
+
     /**
      * 解析嵌套字段路径
      * <p>
@@ -358,14 +356,14 @@ public class SpelValidatorUtil {
         if (startClass == null || fieldPath == null || fieldPath.isEmpty()) {
             return null;
         }
-        
+
         try {
             // 按 . 分割字段路径
             String[] fieldNames = fieldPath.split("\\.");
-            
+
             PsiClass currentClass = startClass;
             PsiField currentField = null;
-            
+
             // 逐级解析字段
             for (int i = 0; i < fieldNames.length; i++) {
                 String fieldName = fieldNames[i];
@@ -373,13 +371,13 @@ public class SpelValidatorUtil {
                 if (currentClass == null) {
                     return null;
                 }
-                
+
                 // 在当前类及其父类中查找字段
                 currentField = findFieldInClassHierarchy(currentClass, fieldName);
                 if (currentField == null) {
                     return null;
                 }
-                
+
                 // 如果不是最后一个字段，获取字段类型作为下一级的类
                 if (i < fieldNames.length - 1) {
                     currentClass = resolveFieldType(currentClass, fieldName, currentField);
@@ -446,11 +444,11 @@ public class SpelValidatorUtil {
     public static void clearFieldTypeCache() {
         fieldTypeCache.clear();
     }
-    
+
     /**
      * 在类及其父类中查找字段
-     * 
-     * @param psiClass 类对象
+     *
+     * @param psiClass  类对象
      * @param fieldName 字段名
      * @return 找到的字段，如果找不到返回 null
      */
@@ -479,7 +477,8 @@ public class SpelValidatorUtil {
         } catch (Exception e) {
             LOG.debug("Error finding field '" + fieldName + "' in class hierarchy: " + e.getMessage());
         }
-        
+
         return null;
     }
+
 }

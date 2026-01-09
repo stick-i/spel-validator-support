@@ -20,7 +20,7 @@ public class SpelCompletionIntegrationTest extends LightJavaCodeInsightFixtureTe
     @Override
     protected void setUp() throws Exception {
         super.setUp();
-        
+
         // 定义 @Language 注解（IntelliJ 的注解）
         myFixture.addClass("""
                 package org.intellij.lang.annotations;
@@ -35,7 +35,7 @@ public class SpelCompletionIntegrationTest extends LightJavaCodeInsightFixtureTe
                     String suffix() default "";
                 }
                 """);
-        
+
         // 定义 @SpelConstraint 元注解
         myFixture.addClass("""
                 package cn.sticki.spel.validator.constrain;
@@ -47,7 +47,7 @@ public class SpelCompletionIntegrationTest extends LightJavaCodeInsightFixtureTe
                 public @interface SpelConstraint {
                 }
                 """);
-        
+
         // 定义 @SpelAssert 注解（带有 @Language("SpEL") 标注）
         myFixture.addClass("""
                 package cn.sticki.spel.validator.constrain;
@@ -61,10 +61,10 @@ public class SpelCompletionIntegrationTest extends LightJavaCodeInsightFixtureTe
                 public @interface SpelAssert {
                     @Language("SpEL")
                     String assertTrue() default "";
-                    
+                
                     @Language("SpEL")
                     String assertFalse() default "";
-                    
+                
                     String message() default "";
                 }
                 """);
@@ -116,7 +116,7 @@ public class SpelCompletionIntegrationTest extends LightJavaCodeInsightFixtureTe
 
         // 验证补全列表包含字段
         assertNotNull("Completion list should not be null", lookupStrings);
-        
+
         assertTrue("Should contain userName field", lookupStrings.contains("userName"));
         assertTrue("Should contain age field", lookupStrings.contains("age"));
         assertTrue("Should contain email field", lookupStrings.contains("email"));
@@ -181,7 +181,7 @@ public class SpelCompletionIntegrationTest extends LightJavaCodeInsightFixtureTe
                 
                 public class NormalDto {
                     private String userName;
-                    
+                
                     // 普通字符串，不是 SpEL 表达式
                     private String value = "#this.<caret>";
                 }
@@ -192,8 +192,9 @@ public class SpelCompletionIntegrationTest extends LightJavaCodeInsightFixtureTe
 
         // 在普通字符串中不应该有字段补全
         if (lookupStrings != null) {
-            assertFalse("Should NOT contain userName in normal string", 
+            assertFalse("Should NOT contain userName in normal string",
                     lookupStrings.contains("userName"));
         }
     }
+
 }

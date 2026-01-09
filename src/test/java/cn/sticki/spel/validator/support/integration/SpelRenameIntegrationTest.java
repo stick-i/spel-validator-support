@@ -93,7 +93,7 @@ public class SpelRenameIntegrationTest extends LightJavaCodeInsightFixtureTestCa
                     private String status;
                 }
                 """);
-        
+
         // 另外创建一个文件，在其中进行重命名
         myFixture.configureByText("Address.java", """
                 package cn.sticki.test;
@@ -109,4 +109,5 @@ public class SpelRenameIntegrationTest extends LightJavaCodeInsightFixtureTestCa
         String text = nestedDtoFile.getText();
         assertTrue("SpEL expression should be updated to newCity", text.contains("#this.address.newCity"));
     }
+
 }
