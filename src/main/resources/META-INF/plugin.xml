@@ -23,6 +23,7 @@
             <li>字段引用跳转 (Ctrl+Click) / Field reference navigation (Ctrl+Click)</li>
             <li>字段重命名重构支持 / Field rename refactoring support</li>
             <li>字段存在性错误检查 / Field existence error checking</li>
+            <li>message 国际化 key 引用支持 / I18n key reference support for <code>message</code></li>
         </ul>
 
         <h3>关于 SpEL Validator / About SpEL Validator:</h3>

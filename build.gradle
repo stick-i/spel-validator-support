@@ -10,7 +10,7 @@ apply plugin: 'java'
 apply plugin: 'org.jetbrains.intellij.platform'
 
 group = 'cn.sticki'
-version = '1.0.0'
+version = '1.1.0'
 
 repositories {
     mavenCentral()
@@ -64,6 +64,21 @@ intellijPlatform {
         ideaVersion {
             sinceBuild = '232'  // 2023.2
         }
+    }
+
+    // Optional signing configuration. Values can be provided via GitHub Secrets.
+    signing {
+        certificateChain = providers.environmentVariable('CERTIFICATE_CHAIN')
+        privateKey = providers.environmentVariable('PRIVATE_KEY')
+        password = providers.environmentVariable('PRIVATE_KEY_PASSWORD')
+    }
+
+    // Marketplace publishing token/channel.
+    publishing {
+        token = providers.environmentVariable('PUBLISH_TOKEN')
+        channels = providers.environmentVariable('PUBLISH_CHANNEL')
+                .map { [it] }
+                .orElse(['default'])
     }
 }
 

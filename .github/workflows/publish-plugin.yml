@@ -1,0 +1,63 @@
+name: Publish Plugin
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      publish_channel:
+        description: "Marketplace publish channel (default/eap)"
+        required: false
+        default: "default"
+
+concurrency:
+  group: publish-plugin-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+      PUBLISH_CHANNEL: ${{ github.event.inputs.publish_channel || 'default' }}
+      CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+      PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+      PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Validate publish token
+        run: |
+          if [ -z "$PUBLISH_TOKEN" ]; then
+            echo "Missing secret: PUBLISH_TOKEN"
+            exit 1
+          fi
+
+      - name: Ensure tag version matches build.gradle
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version="$(grep -E "^version = '" build.gradle | sed -E "s/version = '([^']+)'/\1/")"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$version" != "$tag" ]; then
+            echo "Tag version '$tag' does not match build.gradle version '$version'"
+            exit 1
+          fi
+
+      - name: Verify plugin
+        run: ./gradlew --no-daemon test verifyPluginProjectConfiguration verifyPluginStructure
+
+      - name: Publish to JetBrains Marketplace
+        run: ./gradlew --no-daemon publishPlugin
