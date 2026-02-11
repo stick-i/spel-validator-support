@@ -15,7 +15,7 @@
     <description><![CDATA[
         <p>Development support for SpEL Validator framework in IntelliJ IDEA.</p>
         <p>为 SpEL Validator 框架提供开发支持的 IntelliJ IDEA 插件。</p>
-        
+
         <h3>主要功能 / Features:</h3>
         <ul>
             <li>SpEL 语言注入和语法高亮 / SpEL language injection and syntax highlighting</li>
@@ -28,7 +28,7 @@
         <h3>关于 SpEL Validator / About SpEL Validator:</h3>
         <p>SpEL Validator 是一个基于 Spring Expression Language 的 Java 参数校验框架。</p>
         <p>SpEL Validator is a Java parameter validation framework based on Spring Expression Language.</p>
-        
+
         <p>项目地址 / Project: <a href="https://github.com/stick-i/spel-validator">https://github.com/stick-i/spel-validator</a></p>
     ]]></description>
 
@@ -37,6 +37,7 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
     <depends>org.intellij.intelliLang</depends>
+    <depends>com.intellij.properties</depends>
     <depends config-file="spring-support.xml">com.intellij.spring</depends>
 
     <!-- Extension points defined by the plugin.
@@ -44,5 +45,9 @@
     <extensions defaultExtensionNs="com.intellij">
         <!-- Language injection for SpEL expressions in SpEL Validator annotations -->
         <languageInjector implementation="cn.sticki.spel.validator.support.injection.SpelLanguageInjector"/>
+
+        <!-- I18n key reference support for message = "{xxx.xxx}" -->
+        <psi.referenceContributor language="JAVA"
+                                 implementation="cn.sticki.spel.validator.support.reference.SpelMessageKeyReferenceContributor"/>
     </extensions>
 </idea-plugin>
