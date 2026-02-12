@@ -145,7 +145,7 @@ public class SpelLanguageInjector implements LanguageInjector {
         }
 
         // 6. 检查注解是否为约束注解
-        if (!SpelValidatorUtil.isSpelConstraintAnnotation((PsiAnnotation) annotation)) {
+        if (!SpelValidatorUtil.isSpelValidatorAnnotation((PsiAnnotation) annotation)) {
             return;
         }
 

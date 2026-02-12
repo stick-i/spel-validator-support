@@ -23,7 +23,7 @@ public class SpelValidatorElContextsExtension extends SpringElContextsExtension 
     public @NotNull Collection<? extends PsiVariable> getContextVariables(@NotNull PsiElement context) {
         // 查找包含的注解
         PsiAnnotation annotation = findContainingAnnotation(context);
-        if (annotation == null || !SpelValidatorUtil.isSpelConstraintAnnotation(annotation)) {
+        if (annotation == null || !SpelValidatorUtil.isSpelValidatorAnnotation(annotation)) {
             return Collections.emptyList();
         }
 

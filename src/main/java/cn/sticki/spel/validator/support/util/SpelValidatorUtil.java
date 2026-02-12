@@ -56,6 +56,16 @@ public class SpelValidatorUtil {
     private static final String SPEL_CONSTRAINT_ANNOTATION = "cn.sticki.spel.validator.constrain.SpelConstraint";
 
     /**
+     * SpelValid 注解的完全限定名（Jakarta 版本）
+     */
+    private static final String SPEL_VALID_JAKARTA = "cn.sticki.spel.validator.jakarta.SpelValid";
+
+    /**
+     * SpelValid 注解的完全限定名（Javax 版本）
+     */
+    private static final String SPEL_VALID_JAVAX = "cn.sticki.spel.validator.javax.SpelValid";
+
+    /**
      * IntelliJ @Language 注解的完全限定名
      * <p>
      * 用于标记注解属性应该注入特定语言支持
@@ -144,6 +154,44 @@ public class SpelValidatorUtil {
         }
 
         return false;
+    }
+
+    /**
+     * 判断注解是否为 SpelValid 注解
+     * <p>
+     * SpelValid 注解存在两个版本：
+     * <ul>
+     *   <li>{@value #SPEL_VALID_JAKARTA}（Jakarta 版本）</li>
+     *   <li>{@value #SPEL_VALID_JAVAX}（Javax 版本）</li>
+     * </ul>
+     *
+     * @param annotation 待检查的注解，可以为 null
+     * @return 如果是 SpelValid 注解返回 true，否则返回 false
+     */
+    public static boolean isSpelValidAnnotation(PsiAnnotation annotation) {
+        if (annotation == null) {
+            return false;
+        }
+
+        try {
+            String qualifiedName = annotation.getQualifiedName();
+            return SPEL_VALID_JAKARTA.equals(qualifiedName) || SPEL_VALID_JAVAX.equals(qualifiedName);
+        } catch (Exception e) {
+            LOG.debug("Error checking SpelValid annotation: " + e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 判断注解是否为 SpEL Validator 框架的注解（约束注解或 SpelValid 注解）
+     * <p>
+     * 这是一个统一的入口方法，等价于 {@link #isSpelConstraintAnnotation} || {@link #isSpelValidAnnotation}
+     *
+     * @param annotation 待检查的注解，可以为 null
+     * @return 如果是 SpEL Validator 框架的注解返回 true，否则返回 false
+     */
+    public static boolean isSpelValidatorAnnotation(PsiAnnotation annotation) {
+        return isSpelConstraintAnnotation(annotation) || isSpelValidAnnotation(annotation);
     }
 
     /**
