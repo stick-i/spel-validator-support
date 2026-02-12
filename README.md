@@ -49,7 +49,8 @@ SpEL Validator 是一个基于 Spring Expression Language 的 Java 参数校验�
 
 ### 支持的注解
 
-插件支持以下 SpEL Validator 内置注解：
+插件支持以下 SpEL Validator 注解：
+- `@SpelValid`
 - `@SpelAssert`
 - `@SpelNotNull`
 - `@SpelNotBlank`
@@ -285,7 +286,8 @@ Auto-completes when typing `#this.` in SpEL expressions:
 
 ### Supported Annotations
 
-The plugin supports the following SpEL Validator built-in annotations:
+The plugin supports the following SpEL Validator annotations:
+- `@SpelValid`
 - `@SpelAssert`
 - `@SpelNotNull`
 - `@SpelNotBlank`
