@@ -118,6 +118,142 @@ public class SpelValidatorUtilTest extends BasePlatformTestCase {
     }
 
     /**
+     * 测试 Jakarta 版本的 SpelValid 注解识别
+     */
+    public void testIsSpelValidAnnotation_Jakarta() {
+        // 创建 Jakarta 版本的 SpelValid 注解
+        myFixture.configureByText("SpelValid.java",
+                "package cn.sticki.spel.validator.jakarta;\n" +
+                "public @interface SpelValid {\n" +
+                "  String condition() default \"\";\n" +
+                "}"
+        );
+
+        PsiJavaFile javaFile = (PsiJavaFile) myFixture.configureByText("TestClass.java",
+                "package test;\n" +
+                "import cn.sticki.spel.validator.jakarta.SpelValid;\n" +
+                "@SpelValid(condition = \"true\")\n" +
+                "public class TestClass {\n" +
+                "  private String field;\n" +
+                "}"
+        );
+
+        PsiClass testClass = javaFile.getClasses()[0];
+        PsiAnnotation annotation = testClass.getAnnotations()[0];
+
+        assertTrue("Jakarta SpelValid should be recognized by isSpelValidAnnotation",
+                SpelValidatorUtil.isSpelValidAnnotation(annotation));
+        assertFalse("Jakarta SpelValid should NOT be recognized by isSpelConstraintAnnotation",
+                SpelValidatorUtil.isSpelConstraintAnnotation(annotation));
+        assertTrue("Jakarta SpelValid should be recognized by isSpelValidatorAnnotation",
+                SpelValidatorUtil.isSpelValidatorAnnotation(annotation));
+    }
+
+    /**
+     * 测试 Javax 版本的 SpelValid 注解识别
+     */
+    public void testIsSpelValidAnnotation_Javax() {
+        myFixture.configureByText("SpelValid.java",
+                "package cn.sticki.spel.validator.javax;\n" +
+                "public @interface SpelValid {\n" +
+                "  String condition() default \"\";\n" +
+                "}"
+        );
+
+        PsiJavaFile javaFile = (PsiJavaFile) myFixture.configureByText("TestClass.java",
+                "package test;\n" +
+                "import cn.sticki.spel.validator.javax.SpelValid;\n" +
+                "@SpelValid(condition = \"true\")\n" +
+                "public class TestClass {\n" +
+                "  private String field;\n" +
+                "}"
+        );
+
+        PsiClass testClass = javaFile.getClasses()[0];
+        PsiAnnotation annotation = testClass.getAnnotations()[0];
+
+        assertTrue("Javax SpelValid should be recognized by isSpelValidAnnotation",
+                SpelValidatorUtil.isSpelValidAnnotation(annotation));
+        assertTrue("Javax SpelValid should be recognized by isSpelValidatorAnnotation",
+                SpelValidatorUtil.isSpelValidatorAnnotation(annotation));
+    }
+
+    /**
+     * 测试非 SpelValid 注解不会被误判
+     */
+    public void testIsSpelValidAnnotation_NonSpelValid() {
+        PsiJavaFile javaFile = (PsiJavaFile) myFixture.configureByText("TestClass.java",
+                "package test;\n" +
+                "@Deprecated\n" +
+                "public class TestClass {\n" +
+                "  private String field;\n" +
+                "}"
+        );
+
+        PsiClass testClass = javaFile.getClasses()[0];
+        PsiAnnotation annotation = testClass.getAnnotations()[0];
+
+        assertFalse("Non-SpelValid annotation should not be recognized",
+                SpelValidatorUtil.isSpelValidAnnotation(annotation));
+    }
+
+    /**
+     * 测试 isSpelValidatorAnnotation 统一入口覆盖约束注解
+     */
+    public void testIsSpelValidatorAnnotation_ConstraintAnnotation() {
+        myFixture.configureByText("SpelNotNull.java",
+                "package cn.sticki.spel.validator.constrain;\n" +
+                "public @interface SpelNotNull {\n" +
+                "  String condition() default \"\";\n" +
+                "}"
+        );
+
+        PsiJavaFile javaFile = (PsiJavaFile) myFixture.configureByText("TestClass.java",
+                "package test;\n" +
+                "import cn.sticki.spel.validator.constrain.SpelNotNull;\n" +
+                "public class TestClass {\n" +
+                "  @SpelNotNull(condition = \"true\")\n" +
+                "  private String field;\n" +
+                "}"
+        );
+
+        PsiClass testClass = javaFile.getClasses()[0];
+        PsiField field = testClass.getFields()[0];
+        PsiAnnotation annotation = field.getAnnotations()[0];
+
+        assertTrue("Constraint annotation should also be recognized by isSpelValidatorAnnotation",
+                SpelValidatorUtil.isSpelValidatorAnnotation(annotation));
+    }
+
+    /**
+     * 测试 SpelValid 注解的 getContextClass（类级注解场景）
+     */
+    public void testGetContextClass_SpelValidOnClass() {
+        myFixture.configureByText("SpelValid.java",
+                "package cn.sticki.spel.validator.jakarta;\n" +
+                "public @interface SpelValid {\n" +
+                "  String condition() default \"\";\n" +
+                "}"
+        );
+
+        PsiJavaFile javaFile = (PsiJavaFile) myFixture.configureByText("TestClass.java",
+                "package test;\n" +
+                "import cn.sticki.spel.validator.jakarta.SpelValid;\n" +
+                "@SpelValid(condition = \"true\")\n" +
+                "public class TestClass {\n" +
+                "  private String name;\n" +
+                "}"
+        );
+
+        PsiClass testClass = javaFile.getClasses()[0];
+        PsiAnnotation annotation = testClass.getAnnotations()[0];
+
+        PsiClass contextClass = SpelValidatorUtil.getContextClass(annotation);
+        assertNotNull("Context class should not be null for class-level SpelValid", contextClass);
+        assertEquals("Context class should be TestClass", "TestClass", contextClass.getName());
+    }
+
+    /**
      * 测试获取上下文类
      * Requirements: 3.1
      */
@@ -246,6 +382,14 @@ public class SpelValidatorUtilTest extends BasePlatformTestCase {
         // 测试 isSpelConstraintAnnotation 的空值处理
         assertFalse("Should return false for null annotation",
                 SpelValidatorUtil.isSpelConstraintAnnotation(null));
+
+        // 测试 isSpelValidAnnotation 的空值处理
+        assertFalse("isSpelValidAnnotation should return false for null",
+                SpelValidatorUtil.isSpelValidAnnotation(null));
+
+        // 测试 isSpelValidatorAnnotation 的空值处理
+        assertFalse("isSpelValidatorAnnotation should return false for null",
+                SpelValidatorUtil.isSpelValidatorAnnotation(null));
 
         // 测试 isSpelLanguageAttribute 的空值处理
         assertFalse("Should return false for null method",

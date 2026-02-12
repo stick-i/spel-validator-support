@@ -49,6 +49,26 @@ public class SpelRenameIntegrationTest extends LightJavaCodeInsightFixtureTestCa
                     public String city;
                 }
                 """);
+
+        // 定义 @SpelValid 注解（Jakarta 版本）
+        myFixture.addClass("""
+                package cn.sticki.spel.validator.jakarta;
+                
+                import java.lang.annotation.*;
+                import org.intellij.lang.annotations.Language;
+                
+                @Target({ElementType.TYPE})
+                @Retention(RetentionPolicy.RUNTIME)
+                public @interface SpelValid {
+                    @Language("SpEL")
+                    String condition() default "";
+                
+                    @Language("SpEL")
+                    String[] spelGroups() default {};
+                
+                    String message() default "";
+                }
+                """);
     }
 
     /**
@@ -108,6 +128,33 @@ public class SpelRenameIntegrationTest extends LightJavaCodeInsightFixtureTestCa
         // 验证 NestedDto 中的内容已更新
         String text = nestedDtoFile.getText();
         assertTrue("SpEL expression should be updated to newCity", text.contains("#this.address.newCity"));
+    }
+
+    /**
+     * 测试 SpelValid condition 中的字段重命名
+     */
+    public void testSpelValidConditionFieldRename() {
+        myFixture.configureByText("SpelValidDto.java", """
+                package cn.sticki.test;
+                import cn.sticki.spel.validator.jakarta.SpelValid;
+                @SpelValid(condition = "#this.userName != null")
+                public class SpelValidDto {
+                    public String user<caret>Name;
+                    public Integer age;
+                }
+                """);
+
+        myFixture.renameElementAtCaret("newUserName");
+
+        myFixture.checkResult("""
+                package cn.sticki.test;
+                import cn.sticki.spel.validator.jakarta.SpelValid;
+                @SpelValid(condition = "#this.newUserName != null")
+                public class SpelValidDto {
+                    public String newUserName;
+                    public Integer age;
+                }
+                """);
     }
 
 }

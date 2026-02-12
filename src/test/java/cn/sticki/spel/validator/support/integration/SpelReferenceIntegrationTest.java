@@ -51,6 +51,26 @@ public class SpelReferenceIntegrationTest extends LightJavaCodeInsightFixtureTes
                     public String city;
                 }
                 """);
+
+        // 定义 @SpelValid 注解（Jakarta 版本）
+        myFixture.addClass("""
+                package cn.sticki.spel.validator.jakarta;
+                
+                import java.lang.annotation.*;
+                import org.intellij.lang.annotations.Language;
+                
+                @Target({ElementType.TYPE})
+                @Retention(RetentionPolicy.RUNTIME)
+                public @interface SpelValid {
+                    @Language("SpEL")
+                    String condition() default "";
+                
+                    @Language("SpEL")
+                    String[] spelGroups() default {};
+                
+                    String message() default "";
+                }
+                """);
     }
 
     /**
@@ -92,6 +112,26 @@ public class SpelReferenceIntegrationTest extends LightJavaCodeInsightFixtureTes
         assertTrue("Reference should resolve to a PsiField", element instanceof PsiField);
         assertEquals("city", ((PsiField) element).getName());
         assertEquals("cn.sticki.test.Address", ((PsiField) element).getContainingClass().getQualifiedName());
+    }
+
+    /**
+     * 测试 SpelValid condition 中的字段跳转
+     */
+    public void testSpelValidConditionFieldReference() {
+        myFixture.configureByText("SpelValidDto.java", """
+                package cn.sticki.test;
+                import cn.sticki.spel.validator.jakarta.SpelValid;
+                @SpelValid(condition = "#this.user<caret>Name != null")
+                public class SpelValidDto {
+                    public String userName;
+                    public Integer age;
+                }
+                """);
+
+        PsiElement element = myFixture.getElementAtCaret();
+        assertNotNull("Reference should resolve to an element in SpelValid condition", element);
+        assertTrue("Reference should resolve to a PsiField", element instanceof PsiField);
+        assertEquals("userName", ((PsiField) element).getName());
     }
 
 }

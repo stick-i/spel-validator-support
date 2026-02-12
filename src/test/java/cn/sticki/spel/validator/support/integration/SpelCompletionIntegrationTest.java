@@ -78,6 +78,26 @@ public class SpelCompletionIntegrationTest extends LightJavaCodeInsightFixtureTe
                 }
                 """);
 
+        // 定义 @SpelValid 注解（Jakarta 版本）
+        myFixture.addClass("""
+                package cn.sticki.spel.validator.jakarta;
+                
+                import java.lang.annotation.*;
+                import org.intellij.lang.annotations.Language;
+                
+                @Target({ElementType.TYPE})
+                @Retention(RetentionPolicy.RUNTIME)
+                public @interface SpelValid {
+                    @Language("SpEL")
+                    String condition() default "";
+                
+                    @Language("SpEL")
+                    String[] spelGroups() default {};
+                
+                    String message() default "";
+                }
+                """);
+
         // 定义 BaseDto 类
         myFixture.addClass("""
                 package cn.sticki.test;
@@ -195,6 +215,53 @@ public class SpelCompletionIntegrationTest extends LightJavaCodeInsightFixtureTe
             assertFalse("Should NOT contain userName in normal string",
                     lookupStrings.contains("userName"));
         }
+    }
+
+    /**
+     * 测试 SpelValid 的 condition 属性中的字段补全
+     */
+    public void testSpelValidConditionFieldCompletion() {
+        myFixture.configureByText("SpelValidDto.java", """
+                package cn.sticki.test;
+                
+                import cn.sticki.spel.validator.jakarta.SpelValid;
+                
+                @SpelValid(condition = "#this.<caret>")
+                public class SpelValidDto {
+                    public String userName;
+                    public Integer age;
+                }
+                """);
+
+        myFixture.complete(CompletionType.BASIC);
+        List<String> lookupStrings = myFixture.getLookupElementStrings();
+
+        assertNotNull("Completion list should not be null for SpelValid condition", lookupStrings);
+        assertTrue("Should contain userName field in SpelValid condition", lookupStrings.contains("userName"));
+        assertTrue("Should contain age field in SpelValid condition", lookupStrings.contains("age"));
+    }
+
+    /**
+     * 测试 SpelValid 的 condition 属性中的继承字段补全
+     */
+    public void testSpelValidConditionInheritedFieldCompletion() {
+        myFixture.configureByText("SpelValidChildDto.java", """
+                package cn.sticki.test;
+                
+                import cn.sticki.spel.validator.jakarta.SpelValid;
+                
+                @SpelValid(condition = "#this.<caret>")
+                public class SpelValidChildDto extends BaseDto {
+                    public String name;
+                }
+                """);
+
+        myFixture.complete(CompletionType.BASIC);
+        List<String> lookupStrings = myFixture.getLookupElementStrings();
+
+        assertNotNull("Completion list should not be null", lookupStrings);
+        assertTrue("Should contain name field from SpelValidChildDto", lookupStrings.contains("name"));
+        assertTrue("Should contain id field from BaseDto", lookupStrings.contains("id"));
     }
 
 }
